@@ -3,7 +3,7 @@ const GameSession = require("../models/gameSessionModel");
 
 exports.startGame = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const  userId  = req.user._id;
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });

@@ -55,7 +55,7 @@ exports.finishGame = async (req, res) => {
         .status(400)
         .json({ message: "Please fill all required fields" });
     }
-    const gameSession = await GameSession.findById(gameSessionId);
+    const session = await GameSession.findById(gameSessionId);
 
     if (!session) {
       return res.status(404).json({ message: "Game session not found" });
@@ -122,7 +122,6 @@ exports.restGame = async (req, res) => {
     });
   }
 };
-
 
 exports.getGameLeaderBord  = async (req, res) => {
     try {

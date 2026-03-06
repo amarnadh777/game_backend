@@ -13,7 +13,7 @@ app.use("/uploads", express.static("uploads"));
 app.use('/api/auth', require('./routes/auth'))  
 app.use("/api/game-sessions", require("./routes/gameRoutes"))
 app.use("/api/upload", require("./routes/uploadRoutes"))
-
+app.use("/api/banner", require("./routes/bannerRoutes"))
 app.get('/', (req, res) => {
     res.send('Hello World!');
 });

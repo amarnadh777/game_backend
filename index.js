@@ -10,7 +10,7 @@ connectDB();
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-app.use('/api/auth', require('./routes/auth'))
+app.use('/api/auth', require('./routes/auth'))  
 app.use("/api/game-sessions", require("./routes/gameRoutes"))
 app.use("/api/upload", require("./routes/uploadRoutes"))
 

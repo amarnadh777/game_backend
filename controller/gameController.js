@@ -4,6 +4,7 @@ const GameSession = require("../models/gameSessionModel");
 exports.startGame = async (req, res) => {
   try {
     const  userId  = req.user._id;
+    // console.log("Starting game for user:", userId);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
@@ -38,6 +39,8 @@ exports.startGame = async (req, res) => {
       gameSessionId: newSession._id,
     });
   } catch (error) {
+
+    console.log("Error starting game session:", error);
     return res.status(500).json({
       success: false,
       message: error.message,

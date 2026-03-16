@@ -1,12 +1,13 @@
 const express  = require('express');
 const app = express();
+const cors = require('cors');
 const port = 3000;
 require("dotenv").config();
 const connectDB = require("./config/db");
 require("dotenv").config();
 connectDB();    
 
-
+app.use(cors());
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));

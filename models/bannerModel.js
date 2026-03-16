@@ -34,7 +34,8 @@ const bannerSchema = new mongoose.Schema({
     type: String, 
   },
   status: {
-    type: String, // To capture the "done" status seen in your sheet
+    type: Boolean,
+    default: true 
   }
 }, { timestamps: true });
 

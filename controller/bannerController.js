@@ -62,6 +62,8 @@ exports.uploadImage = async (req, res) => {
     }
     // -----------------------------------
 
+
+    console.log(req.body)
     const banner = new Banner({
       slNo: nextSlNo,                // Use the calculated number here!
       name: req.body.name,           
@@ -78,32 +80,42 @@ exports.uploadImage = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Error uploading image:", error);
     res.status(500).json({
       message: error.message
     });
   }
 };
 exports.getBannerImages = async (req, res) => {
+  try {
+    const { page = 1, search = "" } = req.query;
 
-try {
-const banners = await Banner.find().sort({ createdAt: -1 });
-res.status(200).json({
-  message: "Banner images retrieved successfully",
-  banners
-})
+    const limit = 10;
+    const skip = (page - 1) * limit;
 
-    
-} catch (error) {
-    console.log("Error retrieving banner images:", error);
-    res.status(500).json({
-      message: error.message
+    // --- CHANGED 'title' TO 'name' HERE ---
+    const query = search
+      ? { name: { $regex: search, $options: "i" } } 
+      : {};
+
+    const banners = await Banner.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Banner.countDocuments(query);
+
+    res.status(200).json({
+      banners,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+      total
     });
-}
 
-
-
-}
-
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.deleteBannerImage = async (req, res) => {
 
@@ -170,6 +182,39 @@ exports.updateImage = async (req, res) => {
     });
 
   } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
+
+
+
+
+exports.toggleBannerStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const banner = await Banner.findById(id);
+
+    if (!banner) {
+      return res.status(404).json({
+        message: "Banner not found"
+      });
+    }
+
+    // toggle status
+    banner.status = !banner.status;
+
+    await banner.save();
+
+    res.status(200).json({
+      message: "Banner status updated successfully",
+      banner
+    });
+
+  } catch (error) {
+    console.error("Error toggling banner status:", error);
     res.status(500).json({
       message: error.message
     });

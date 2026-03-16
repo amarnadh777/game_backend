@@ -8,5 +8,6 @@ router.get("/list",  bannerController.getBannerImages)
 router.delete("/delete/:id",bannerController.deleteBannerImage)
 router.put("/update/:id",upload.single('image'), bannerController.updateImage)
 
+router.patch("/toggle-status/:id", bannerController.toggleBannerStatus)
 
 module.exports = router;

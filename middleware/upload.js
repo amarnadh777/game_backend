@@ -6,7 +6,12 @@ const fs = require("fs");
 const uploadDir = path.join(__dirname, "../uploads");
 
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("Uploads folder created");
+  } catch (err) {
+    console.error("Error creating uploads folder:", err);
+  }
 }
 
 // storage config

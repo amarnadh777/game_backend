@@ -1,4 +1,6 @@
 const Banner = require("../models/bannerModel")
+const path = require('path')
+const fs = require('fs')
 
 // exports.uploadImage = async (req, res) => {
 //   try {
@@ -69,7 +71,7 @@ exports.uploadImage = async (req, res) => {
       name: req.body.name,           
       imageUrl: imageUrl,
       resolution: req.body.resolution, 
-      status: req.body.status
+
     });
 
     await banner.save();
@@ -129,6 +131,29 @@ exports.deleteBannerImage = async (req, res) => {
       });
     }
 
+    let imageName  = null
+    if(banner.imageUrl){
+
+      imageName = banner.imageUrl.split("/uploads/")[1];
+    }
+
+  if(imageName)
+{
+
+  const imagePath = path.join(__dirname, "..", "uploads", imageName);
+
+  if(fs.existsSync(imagePath))
+  {
+    await fs.promises.unlink(imagePath)
+    console.log("Image deleted",imagePath)
+
+    
+  }
+  else
+  {
+    console.log("Image not found on server");
+  }
+}
     const deletedBanner = await Banner.findByIdAndDelete(id);
     res.status(200).json({
       message: "Banner image deleted successfully",
@@ -141,6 +166,8 @@ exports.deleteBannerImage = async (req, res) => {
       });
     }
   } catch (error) {
+
+    console.log(error)
     res.status(500).json({
       message: error.message
     });

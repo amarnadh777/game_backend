@@ -24,6 +24,10 @@ const gameSessionSchema = new mongoose.Schema(
       default: "IN_PROGRESS",
     },
 
+    vehicle: {
+      type: String,
+    },
+
     completedAt: {
       type: Date,
     },

@@ -10,7 +10,7 @@ connectDB();
 app.use(
   cors({
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS" , "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
@@ -21,6 +21,7 @@ app.use('/api/auth', require('./routes/auth'))
 app.use("/api/game-sessions", require("./routes/gameRoutes"))
 app.use("/api/upload", require("./routes/uploadRoutes"))
 app.use("/api/banner", require("./routes/bannerRoutes"))
+app.use("/api/user", require("./routes/userRoutes"))
 app.get('/', (req, res) => {
     res.send('Hello World!');
 });

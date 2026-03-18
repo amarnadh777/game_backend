@@ -10,4 +10,5 @@ router.put("/update/:id",upload.single('image'), bannerController.updateImage)
 
 router.patch("/toggle-status/:id", bannerController.toggleBannerStatus)
 
+
 module.exports = router;

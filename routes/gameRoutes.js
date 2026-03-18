@@ -6,5 +6,8 @@
     router.post("/finish",authMiddleware,gameController.finishGame)
     router.post("/reset",gameController.restGame)
     router.get("/leaderboard",gameController.getGameLeaderBord)
+    router.get("/leaderboard/download",gameController.dowloadLeaderBoard)
+   
 
-    module.exports = router;
+
+    module.exports = router;    

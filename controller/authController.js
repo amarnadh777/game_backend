@@ -79,19 +79,21 @@ exports.register = async (req, res) => {
       { email },
       {
         otp,
-        expiresAt: Date.now() + 5 * 60 * 1000
+expiresAt: new Date(Date.now() + 5 * 60 * 1000)
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     // ✅ nodemailer setup
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+  const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // ✅ use false
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
     // ✅ send email
     await transporter.sendMail({

@@ -32,7 +32,11 @@ const userSchema = new mongoose.Schema({
     status:{
       type:Boolean,
       default:true
-    }
+    },
+    isEmailVerified: {
+  type: Boolean,
+  default: false
+}
 
 },
 {

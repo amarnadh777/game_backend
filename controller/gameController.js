@@ -94,6 +94,153 @@ exports.finishGame = async (req, res) => {
   }
 };
 
+exports.startGame = async (req, res) => {
+  try {
+    const  userId  = req.user._id;
+    // console.log("Starting game for user:", userId);
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Check user exists
+    const userExist = await User.findById(userId);
+    if (!userExist) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if already IN_PROGRESS session exists
+    const gameSessionExist = await GameSession.findOne({
+      userId,
+      status: "IN_PROGRESS",
+    });
+
+    if (gameSessionExist) {
+      gameSessionExist.status = "RESET";
+      await gameSessionExist.save();
+    }
+
+    // Create new session
+    const newSession = await GameSession.create({
+      userId,
+      status: "IN_PROGRESS",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Game session started",
+      gameSessionId: newSession._id,
+    });
+  } catch (error) {
+
+    console.log("Error starting game session:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+exports.finishGameDirect = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { highestSpeed, timeTaken, vehicle } = req.body;
+
+    if (highestSpeed == null || timeTaken == null) {
+      return res.status(400).json({
+        message: "Please fill all required fields",
+      });
+    }
+
+    // ✅ check user
+    const userExist = await User.findById(userId);
+    if (!userExist) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // ✅ save session
+    const session = await GameSession.create({
+      userId,
+      highestSpeed,
+      timeTaken,
+      vehicle,
+      status: "COMPLETED",
+      completedAt: new Date(),
+    });
+
+    // 🏁 STEP 1: get user's latest session
+    const latestUserSession = await GameSession.findOne({
+      userId,
+      status: "COMPLETED",
+    }).sort({ completedAt: -1, _id: -1 });
+
+    // 🏁 STEP 2: count better players (MATCH leaderboard logic)
+    const betterUsers = await GameSession.aggregate([
+      { $match: { status: "COMPLETED" } },
+
+      // ✅ latest session per user
+      { $sort: { completedAt: -1, _id: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          latestSession: { $first: "$$ROOT" },
+        },
+      },
+      { $replaceRoot: { newRoot: "$latestSession" } },
+
+      // ✅ join user
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+      // ✅ SAME FILTER as leaderboard
+      {
+        $match: {
+          "user.status": true,
+        },
+      },
+
+      // ✅ find users better than current user
+      {
+        $match: {
+          $or: [
+            { timeTaken: { $lt: latestUserSession.timeTaken } },
+            {
+              timeTaken: latestUserSession.timeTaken,
+              highestSpeed: { $gt: latestUserSession.highestSpeed },
+            },
+          ],
+        },
+      },
+
+      { $count: "count" },
+    ]);
+
+    const rank = (betterUsers[0]?.count || 0) + 1;
+
+    // ✅ response
+    return res.status(201).json({
+      success: true,
+      message: "Game saved successfully",
+      session,
+      rank, // ✅ correct rank now
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.restGame = async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -329,12 +476,98 @@ const sessions = await GameSession.find(filter).sort({highestSpeed:-1,timeTaken:
     });
   }
 }
+exports.getActiveLeaderboard = async (req, res) => {
+  try {
+    let { page = 1, limit = 10 } = req.query;
 
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.max(1, parseInt(limit) || 10);
 
+    const skip = (page - 1) * limit;
 
+const basePipeline = [
+  { $match: { status: "COMPLETED" } },
 
+  // ✅ FIXED: stable latest session
+  { $sort: { completedAt: -1, _id: -1 } },
 
+  {
+    $group: {
+      _id: "$userId",
+      latestSession: { $first: "$$ROOT" },
+    },
+  },
 
+  { $replaceRoot: { newRoot: "$latestSession" } },
+
+  {
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "_id",
+      as: "user",
+    },
+  },
+
+  { $unwind: "$user" },
+
+  { $match: { "user.status": true } },
+
+  {
+    $sort: {
+      timeTaken: 1,
+      highestSpeed: -1,
+      completedAt: -1,
+    },
+  },
+];
+    // ✅ leaderboard data
+    const leaderboard = await GameSession.aggregate([
+      ...basePipeline,
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+
+    // ✅ correct total (same pipeline without pagination)
+    const totalResult = await GameSession.aggregate([
+      ...basePipeline,
+      { $count: "total" },
+    ]);
+
+    const total = totalResult[0]?.total || 0;
+
+    // 🎯 format
+    const formatted = leaderboard.map((item, index) => ({
+      rank: skip + index + 1, // page rank (UI use)
+      user: item.user._id,
+      firstName: item.user.firstName,
+      lastName: item.user.lastName,
+      email: item.user.email,
+      highestSpeed: item.highestSpeed,
+      timeTaken: item.timeTaken,
+      completedAt: item.completedAt,
+      country: item.user.country,
+      phoneNumber: item.user.phoneNumber,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      leaderboard: formatted,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 
 

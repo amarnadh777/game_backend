@@ -7,7 +7,7 @@ const sendOtpEmail = async (email, otp, firstName) => {
       sender: {
         name: "Kanoo Daily Rental Game",
 
-        email: "amarnadh6565@gmail.com" // must be verified in Brevo
+        email: "kanooscargame@gmail.com" // must be verified in Brevo
       },
       to: [{ email }],
       subject: "Your OTP Code",

@@ -240,26 +240,61 @@ exports.resendOtp = async (req, res) => {
 };
 
 
-exports.login = async(req,res) =>{
+exports.login = async (req, res) => {
     try {
-        const {email} = req.body;
-        if(!email){
-            return res.status(400).json({message: "Please fill all required fields"})   
-        }
-
-        const user = await User.findOne({email})
-        if(!user){
-            return res.status(400).json({message: "Invalid email or password"})
-        }
-        const token = jwt.sign({userId:user._id}, process.env.JWT_SECRET)
-
-
+        const { email } = req.body;
         
+        if (!email) {
+            return res.status(400).json({ 
+                success: false,
+                errorCode: "MISSING_FIELDS", // <--- Custom Code
+                message: "Please fill all required fields" 
+            });   
+        }
 
-     res.status(200).json({message: "User logged in successfully", user,
-        token:token
-     })
+        const user = await User.findOne({ email });
+        
+        if (!user) {
+            return res.status(400).json({ 
+                success: false,
+                errorCode: "INVALID_CREDENTIALS", // <--- Custom Code
+                message: "Invalid email or password" 
+            });
+        }
+
+        // 🚨 CHECK 1: Disabled by Admin
+        if (user.status === false) {
+            return res.status(403).json({ 
+                success: false, 
+                errorCode: "ACCOUNT_DISABLED", // <--- Unity will look for this!
+                message: "Your account has been disabled by the administrator." 
+            });
+        }
+
+        // 🚨 CHECK 2: Email Not Verified
+        if (user.isEmailVerified === false) {
+            return res.status(403).json({ 
+                success: false, 
+                errorCode: "EMAIL_NOT_VERIFIED", // <--- Unity will look for this!
+                message: "Please verify your email address before logging in." 
+            });
+        }
+
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
+        res.status(200).json({ 
+            success: true,
+            message: "User logged in successfully", 
+            user,
+            token: token
+        });
+
     } catch (error) {
-        res.status(500).json({message: error.message})  
+        console.error("Login Error:", error);
+        res.status(500).json({ 
+            success: false,
+            errorCode: "SERVER_ERROR",
+            message: error.message 
+        });  
     }
-}
+};

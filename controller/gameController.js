@@ -145,21 +145,27 @@ exports.finishGameDirect = async (req, res) => {
     const userId = req.user._id;
     const { highestSpeed, timeTaken, vehicle } = req.body;
 
+    // ✅ Validation (allow 0 values)
     if (highestSpeed == null || timeTaken == null) {
       return res.status(400).json({
-        message: "Please fill all required fields",
+        success: false,
+        message: "highestSpeed and timeTaken are required",
+        errorCode: "VALIDATION_ERROR"
       });
     }
 
-    // ✅ check user
+    // 🔍 Check user
     const userExist = await User.findById(userId);
+
     if (!userExist) {
       return res.status(404).json({
+        success: false,
         message: "User not found",
+        errorCode: "USER_NOT_FOUND"
       });
     }
 
-    // ✅ save session
+    // ✅ Create session
     const session = await GameSession.create({
       userId,
       highestSpeed,
@@ -169,17 +175,17 @@ exports.finishGameDirect = async (req, res) => {
       completedAt: new Date(),
     });
 
-    // 🏁 STEP 1: get user's latest session
+    // 🏁 Get latest session for this user
     const latestUserSession = await GameSession.findOne({
       userId,
       status: "COMPLETED",
     }).sort({ completedAt: -1, _id: -1 });
 
-    // 🏁 STEP 2: count better players (MATCH leaderboard logic)
+    // 🏆 Calculate rank
     const betterUsers = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
-      // ✅ latest session per user
+      // latest session per user
       { $sort: { completedAt: -1, _id: -1 } },
       {
         $group: {
@@ -189,7 +195,7 @@ exports.finishGameDirect = async (req, res) => {
       },
       { $replaceRoot: { newRoot: "$latestSession" } },
 
-      // ✅ join user
+      // join user
       {
         $lookup: {
           from: "users",
@@ -200,14 +206,14 @@ exports.finishGameDirect = async (req, res) => {
       },
       { $unwind: "$user" },
 
-      // ✅ SAME FILTER as leaderboard
+      // only active users
       {
         $match: {
           "user.status": true,
         },
       },
 
-      // ✅ find users better than current user
+      // better players
       {
         $match: {
           $or: [
@@ -225,18 +231,30 @@ exports.finishGameDirect = async (req, res) => {
 
     const rank = (betterUsers[0]?.count || 0) + 1;
 
-    // ✅ response
+    // ✅ Response
     return res.status(201).json({
       success: true,
       message: "Game saved successfully",
-      session,
-      rank, // ✅ correct rank now
+      data: {
+        session: {
+          _id: session._id,
+          highestSpeed: session.highestSpeed,
+          timeTaken: session.timeTaken,
+          vehicle: session.vehicle,
+          status: session.status,
+          completedAt: session.completedAt
+        },
+        rank
+      }
     });
 
   } catch (error) {
-    res.status(500).json({
+    console.error("Finish Game Direct Error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
+      errorCode: "SERVER_ERROR"
     });
   }
 };

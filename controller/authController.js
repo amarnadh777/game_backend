@@ -137,9 +137,9 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // ⏰ check expiry
-    if (otpRecord.expiresAt < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
+    // if (otpRecord.expiresAt < Date.now()) {
+    //   return res.status(400).json({ message: "OTP expired" });
+    // }
 
     // ❌ wrong OTP
     if (otpRecord.otp !== otp) {
@@ -181,6 +181,16 @@ exports.resendOtp = async (req, res) => {
 
     // 🔍 check existing OTP
     const existingOtp = await OTP.findOne({ email });
+
+    if (existingOtp && existingOtp.updatedAt) {
+      const cooldownPeriod = 60 * 1000; // 1 minute cooldown
+      const timeSinceLastSent = Date.now() - new Date(existingOtp.updatedAt).getTime();
+      
+      if (timeSinceLastSent < cooldownPeriod) {
+        const remainingSeconds = Math.ceil((cooldownPeriod - timeSinceLastSent) / 1000);
+        return res.status(429).json({ message: `Please wait ${remainingSeconds} seconds before requesting another OTP` });
+      }
+    }
 
 
     

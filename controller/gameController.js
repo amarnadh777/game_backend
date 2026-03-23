@@ -231,6 +231,13 @@ exports.finishGameDirect = async (req, res) => {
 
     const rank = (betterUsers[0]?.count || 0) + 1;
 
+    // ⭐ NEW: Fetch the user's all-time personal best
+    // Sort by lowest timeTaken first. If tied, sort by highest speed.
+    const bestScore = await GameSession.findOne({
+      userId,
+      status: "COMPLETED"
+    }).sort({ timeTaken: 1, highestSpeed: -1 });
+
     // ✅ Response
     return res.status(201).json({
       success: true,
@@ -244,7 +251,14 @@ exports.finishGameDirect = async (req, res) => {
           status: session.status,
           completedAt: session.completedAt
         },
-        rank
+        rank,
+        bestScore: {
+          _id: bestScore._id,
+          highestSpeed: bestScore.highestSpeed,
+          timeTaken: bestScore.timeTaken,
+          vehicle: bestScore.vehicle,
+          completedAt: bestScore.completedAt
+        } // Added bestScore to the response
       }
     });
 

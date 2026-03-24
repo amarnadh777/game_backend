@@ -243,6 +243,12 @@ exports.finishGameDirect = async (req, res) => {
       success: true,
       message: "Game saved successfully",
       data: {
+        user: {
+          _id: userExist._id,
+          firstName: userExist.firstName,
+          lastName: userExist.lastName,
+          email: userExist.email
+        },
         session: {
           _id: session._id,
           highestSpeed: session.highestSpeed,
@@ -251,6 +257,7 @@ exports.finishGameDirect = async (req, res) => {
           status: session.status,
           completedAt: session.completedAt
         },
+        
         rank,
         bestScore: {
           _id: bestScore._id,
@@ -833,17 +840,17 @@ exports.getActiveLeaderboard = async (req, res) => {
 const basePipeline = [
   { $match: { status: "COMPLETED" } },
 
-  // ✅ FIXED: stable latest session
-  { $sort: { completedAt: -1, _id: -1 } },
+  // ✅ Find the user's best session by lowest time taken
+  { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
 
   {
     $group: {
       _id: "$userId",
-      latestSession: { $first: "$$ROOT" },
+      bestSession: { $first: "$$ROOT" },
     },
   },
 
-  { $replaceRoot: { newRoot: "$latestSession" } },
+  { $replaceRoot: { newRoot: "$bestSession" } },
 
   {
     $lookup: {

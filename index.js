@@ -22,6 +22,7 @@ app.use("/api/game-sessions", require("./routes/gameRoutes"))
 app.use("/api/upload", require("./routes/uploadRoutes"))
 app.use("/api/banner", require("./routes/bannerRoutes"))
 app.use("/api/user", require("./routes/userRoutes"))
+app.use("/api/admin", require("./routes/adminRoutes"))
 app.get('/', (req, res) => {
     res.send('Hello World!');
 });

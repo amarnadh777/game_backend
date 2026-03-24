@@ -177,6 +177,9 @@ exports.verifyOtp = async (req, res) => {
     // 🧹 Delete OTP after success
     await OTP.deleteOne({ email });
 
+    // 🔑 Generate token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
     // ✅ Success response
     return res.status(200).json({
       success: true,
@@ -187,7 +190,8 @@ exports.verifyOtp = async (req, res) => {
           email: user.email,
           isEmailVerified: user.isEmailVerified
         }
-      }
+      },
+      token: token
     });
 
   } catch (error) {
@@ -200,6 +204,9 @@ exports.verifyOtp = async (req, res) => {
     });
   }
 };
+
+
+
 exports.resendOtp = async (req, res) => {
   try {
     const { email } = req.body;

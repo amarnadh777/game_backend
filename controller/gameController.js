@@ -243,12 +243,7 @@ exports.finishGameDirect = async (req, res) => {
       success: true,
       message: "Game saved successfully",
       data: {
-        user: {
-          _id: userExist._id,
-          firstName: userExist.firstName,
-          lastName: userExist.lastName,
-          email: userExist.email
-        },
+        user: `${userExist.firstName || ''} ${userExist.lastName || ''}`.trim(),
         session: {
           _id: session._id,
           highestSpeed: session.highestSpeed,

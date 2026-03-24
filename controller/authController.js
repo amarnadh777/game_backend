@@ -133,6 +133,7 @@ const WHITELIST_EMAILS = [
   "sravan@ortmoragency.com",
   "test2@gmail.com",
   "qa@yourapp.com",
+  "amarnadh6565@gmail.com"
 ].map((e) => e.toLowerCase().trim());
 
 exports.register = async (req, res) => {

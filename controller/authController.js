@@ -35,6 +35,106 @@ const sendOtpEmail = require("../helper/sendEMail")
 
 
 
+// exports.register = async (req, res) => {
+//   try {
+//     const { firstName, lastName, email, country, city, phoneNumber } = req.body;
+
+//     // ✅ Validation
+//     if (!firstName || !email) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "First name and email are required",
+//         errorCode: "VALIDATION_ERROR"
+//       });
+//     }
+
+//     let user = await User.findOne({ email });
+
+//     // 🔴 CASE 1: User exists
+//     if (user) {
+//       if (user.isEmailVerified) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Email already exists",
+//           errorCode: "EMAIL_ALREADY_EXISTS"
+//         });
+//       }
+
+//       // 🟡 Update unverified user
+//       user.firstName = firstName;
+//       user.lastName = lastName;
+//       user.country = country;
+//       user.city = city;
+//       user.phoneNumber = phoneNumber;
+
+//       await user.save();
+
+//     } else {
+//       // 🟢 New user
+//       user = await User.create({
+//         firstName,
+//         lastName,
+//         email,
+//         country,
+//         city,
+//         phoneNumber,
+//         isEmailVerified: false
+//       });
+//     }
+
+//     // ✅ Generate OTP
+//     const otp = Math.floor(1000 + Math.random() * 9000);
+
+//     // ✅ Save OTP
+//     await OTP.findOneAndUpdate(
+//       { email },
+//       {
+//         otp,
+//         expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+//       },
+//       {
+//         upsert: true,
+//         new: true
+//       }
+//     );
+
+//     // ✅ Send Email
+//     await sendOtpEmail(email, otp, firstName);
+
+//     // ✅ Success Response
+//     return res.status(200).json({
+//       success: true,
+//       message: "OTP sent successfully",
+//       data: {
+//         user: {
+//           _id: user._id,
+//           email: user.email,
+//           isEmailVerified: user.isEmailVerified
+//         }
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error("Register Error:", error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       errorCode: "SERVER_ERROR"
+//     });
+//   }
+// };
+
+
+
+
+// 🔥 Whitelist emails
+const WHITELIST_EMAILS = [
+  "sravan@ortmoragency.com",
+  "test2@gmail.com",
+  "qa@yourapp.com",
+].map((e) => e.toLowerCase().trim());
+
 exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, country, city, phoneNumber } = req.body;
@@ -44,41 +144,51 @@ exports.register = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "First name and email are required",
-        errorCode: "VALIDATION_ERROR"
+        errorCode: "VALIDATION_ERROR",
       });
     }
 
-    let user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 🔍 Check whitelist
+    const isWhitelisted = WHITELIST_EMAILS.includes(normalizedEmail);
+
+    let user = await User.findOne({ email: normalizedEmail });
 
     // 🔴 CASE 1: User exists
     if (user) {
-      if (user.isEmailVerified) {
+      // ❌ Block only if NOT whitelisted
+      if (user.isEmailVerified && !isWhitelisted) {
         return res.status(400).json({
           success: false,
           message: "Email already exists",
-          errorCode: "EMAIL_ALREADY_EXISTS"
+          errorCode: "EMAIL_ALREADY_EXISTS",
         });
       }
 
-      // 🟡 Update unverified user
+      // 🟡 Update user (even if verified IF whitelisted)
       user.firstName = firstName;
       user.lastName = lastName;
       user.country = country;
       user.city = city;
       user.phoneNumber = phoneNumber;
 
-      await user.save();
+      // 🔥 Optional: reset verification for test users
+      if (isWhitelisted) {
+        user.isEmailVerified = false;
+      }
 
+      await user.save();
     } else {
       // 🟢 New user
       user = await User.create({
         firstName,
         lastName,
-        email,
+        email: normalizedEmail,
         country,
         city,
         phoneNumber,
-        isEmailVerified: false
+        isEmailVerified: false,
       });
     }
 
@@ -87,21 +197,21 @@ exports.register = async (req, res) => {
 
     // ✅ Save OTP
     await OTP.findOneAndUpdate(
-      { email },
+      { email: normalizedEmail },
       {
         otp,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
       {
         upsert: true,
-        new: true
+        new: true,
       }
     );
 
     // ✅ Send Email
-    await sendOtpEmail(email, otp, firstName);
+    await sendOtpEmail(normalizedEmail, otp, firstName);
 
-    // ✅ Success Response
+    // ✅ Response
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
@@ -109,18 +219,18 @@ exports.register = async (req, res) => {
         user: {
           _id: user._id,
           email: user.email,
-          isEmailVerified: user.isEmailVerified
-        }
-      }
+          isEmailVerified: user.isEmailVerified,
+          isTestUser: isWhitelisted, // 👈 helpful flag
+        },
+      },
     });
-
   } catch (error) {
     console.error("Register Error:", error);
 
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      errorCode: "SERVER_ERROR"
+      errorCode: "SERVER_ERROR",
     });
   }
 };

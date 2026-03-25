@@ -238,6 +238,56 @@ exports.finishGameDirect = async (req, res) => {
       status: "COMPLETED"
     }).sort({ timeTaken: 1, highestSpeed: -1 });
 
+    // 🏆 Calculate rank for best score
+    const betterUsersBestScore = await GameSession.aggregate([
+      { $match: { status: "COMPLETED" } },
+
+      // best session per user
+      { $sort: { timeTaken: 1, highestSpeed: -1 } },
+      {
+        $group: {
+          _id: "$userId",
+          bestSession: { $first: "$$ROOT" },
+        },
+      },
+      { $replaceRoot: { newRoot: "$bestSession" } },
+
+      // join user
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+      // only active users
+      {
+        $match: {
+          "user.status": true,
+        },
+      },
+
+      // better players
+      {
+        $match: {
+          $or: [
+            { timeTaken: { $lt: bestScore.timeTaken } },
+            {
+              timeTaken: bestScore.timeTaken,
+              highestSpeed: { $gt: bestScore.highestSpeed },
+            },
+          ],
+        },
+      },
+
+      { $count: "count" },
+    ]);
+
+    const bestScoreRank = (betterUsersBestScore[0]?.count || 0) + 1;
+
     // ✅ Response
     return res.status(201).json({
       success: true,
@@ -259,7 +309,8 @@ exports.finishGameDirect = async (req, res) => {
           highestSpeed: bestScore.highestSpeed,
           timeTaken: bestScore.timeTaken,
           vehicle: bestScore.vehicle,
-          completedAt: bestScore.completedAt
+          completedAt: bestScore.completedAt,
+          rank: bestScoreRank
         } // Added bestScore to the response
       }
     });

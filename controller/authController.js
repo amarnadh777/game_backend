@@ -423,7 +423,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({ 
                 success: false,
                 errorCode: "INVALID_CREDENTIALS", // <--- Custom Code
-                message: "Invalid email or password" 
+                message: "Invalid email" 
             });
         }
 

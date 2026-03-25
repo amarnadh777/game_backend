@@ -185,15 +185,15 @@ exports.finishGameDirect = async (req, res) => {
     const betterUsers = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
-      // latest session per user
-      { $sort: { completedAt: -1, _id: -1 } },
+      // best session per user
+      { $sort: { timeTaken: 1, highestSpeed: -1 } },
       {
         $group: {
           _id: "$userId",
-          latestSession: { $first: "$$ROOT" },
+          bestSession: { $first: "$$ROOT" },
         },
       },
-      { $replaceRoot: { newRoot: "$latestSession" } },
+      { $replaceRoot: { newRoot: "$bestSession" } },
 
       // join user
       {

@@ -186,7 +186,7 @@ exports.finishGameDirect = async (req, res) => {
       { $match: { status: "COMPLETED" } },
 
       // best session per user
-      { $sort: { timeTaken: 1, highestSpeed: -1 } },
+      { $sort: { highestSpeed: -1, timeTaken: 1 } },
       {
         $group: {
           _id: "$userId",
@@ -217,10 +217,10 @@ exports.finishGameDirect = async (req, res) => {
       {
         $match: {
           $or: [
-            { timeTaken: { $lt: latestUserSession.timeTaken } },
+            { highestSpeed: { $gt: latestUserSession.highestSpeed } },
             {
-              timeTaken: latestUserSession.timeTaken,
-              highestSpeed: { $gt: latestUserSession.highestSpeed },
+              highestSpeed: latestUserSession.highestSpeed,
+              timeTaken: { $lt: latestUserSession.timeTaken },
             },
           ],
         },
@@ -232,18 +232,18 @@ exports.finishGameDirect = async (req, res) => {
     const rank = (betterUsers[0]?.count || 0) + 1;
 
     // ⭐ NEW: Fetch the user's all-time personal best
-    // Sort by lowest timeTaken first. If tied, sort by highest speed.
+    // Sort by highest speed first. If tied, sort by lowest time taken.
     const bestScore = await GameSession.findOne({
       userId,
       status: "COMPLETED"
-    }).sort({ timeTaken: 1, highestSpeed: -1 });
+    }).sort({ highestSpeed: -1, timeTaken: 1 });
 
     // 🏆 Calculate rank for best score
     const betterUsersBestScore = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
       // best session per user
-      { $sort: { timeTaken: 1, highestSpeed: -1 } },
+      { $sort: { highestSpeed: -1, timeTaken: 1 } },
       {
         $group: {
           _id: "$userId",
@@ -274,10 +274,10 @@ exports.finishGameDirect = async (req, res) => {
       {
         $match: {
           $or: [
-            { timeTaken: { $lt: bestScore.timeTaken } },
+            { highestSpeed: { $gt: bestScore.highestSpeed } },
             {
-              timeTaken: bestScore.timeTaken,
-              highestSpeed: { $gt: bestScore.highestSpeed },
+              highestSpeed: bestScore.highestSpeed,
+              timeTaken: { $lt: bestScore.timeTaken },
             },
           ],
         },

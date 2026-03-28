@@ -186,7 +186,7 @@ exports.finishGameDirect = async (req, res) => {
       { $match: { status: "COMPLETED" } },
 
       // best session per user
-      { $sort: { highestSpeed: -1, timeTaken: 1 } },
+      { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
       {
         $group: {
           _id: "$userId",
@@ -217,11 +217,16 @@ exports.finishGameDirect = async (req, res) => {
       {
         $match: {
           $or: [
-            { highestSpeed: { $gt: latestUserSession.highestSpeed } },
+            { timeTaken: { $lt: latestUserSession.timeTaken } },
             {
-              highestSpeed: latestUserSession.highestSpeed,
-              timeTaken: { $lt: latestUserSession.timeTaken },
+              timeTaken: latestUserSession.timeTaken,
+              highestSpeed: { $gt: latestUserSession.highestSpeed },
             },
+            {
+              timeTaken: latestUserSession.timeTaken,
+              highestSpeed: latestUserSession.highestSpeed,
+              completedAt: { $gt: latestUserSession.completedAt },
+            }
           ],
         },
       },
@@ -232,18 +237,18 @@ exports.finishGameDirect = async (req, res) => {
     const rank = (betterUsers[0]?.count || 0) + 1;
 
     // ⭐ NEW: Fetch the user's all-time personal best
-    // Sort by highest speed first. If tied, sort by lowest time taken.
+    // Sort by lowest time taken first. If tied, sort by highest speed.
     const bestScore = await GameSession.findOne({
       userId,
       status: "COMPLETED"
-    }).sort({ highestSpeed: -1, timeTaken: 1 });
+    }).sort({ timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 });
 
     // 🏆 Calculate rank for best score
     const betterUsersBestScore = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
       // best session per user
-      { $sort: { highestSpeed: -1, timeTaken: 1 } },
+      { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
       {
         $group: {
           _id: "$userId",
@@ -274,11 +279,16 @@ exports.finishGameDirect = async (req, res) => {
       {
         $match: {
           $or: [
-            { highestSpeed: { $gt: bestScore.highestSpeed } },
+            { timeTaken: { $lt: bestScore.timeTaken } },
             {
-              highestSpeed: bestScore.highestSpeed,
-              timeTaken: { $lt: bestScore.timeTaken },
+              timeTaken: bestScore.timeTaken,
+              highestSpeed: { $gt: bestScore.highestSpeed },
             },
+            {
+              timeTaken: bestScore.timeTaken,
+              highestSpeed: bestScore.highestSpeed,
+              completedAt: { $gt: bestScore.completedAt },
+            }
           ],
         },
       },

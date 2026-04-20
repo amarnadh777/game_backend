@@ -3,10 +3,10 @@ const bannerController = require("../controller/bannerController")
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require('../middleware/upload');
 
-router.post("/upload",upload.single('image'), bannerController.uploadImage)
-router.get("/list",  bannerController.getBannerImages)
-router.delete("/delete/:id",bannerController.deleteBannerImage)
-router.put("/update/:id",upload.single('image'), bannerController.updateImage)
+router.post("/upload", upload.any(), bannerController.uploadImage)
+router.get("/list", bannerController.getBannerImages)
+router.delete("/delete/:id", bannerController.deleteBannerImage)
+router.put("/update/:id", upload.single('image'), bannerController.updateImage)
 
 router.patch("/toggle-status/:id", bannerController.toggleBannerStatus)
 

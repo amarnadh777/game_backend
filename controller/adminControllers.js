@@ -1,9 +1,6 @@
 
 const GameSession = require("../models/gameSessionModel");
 const User = require("../models/UserModel");
-
-
-
 exports.analytics = async (req, res) => {
     try {
         // Calculate the date for 7 days ago
@@ -281,3 +278,5 @@ exports.analytics = async (req, res) => {
         });
     }
 };
+
+

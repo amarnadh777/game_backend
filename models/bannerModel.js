@@ -1,42 +1,51 @@
-// const mongoose = require('mongoose')
-// const bannerSchema = new mongoose.Schema({
-// title:{
-//     type:String,
-// },
-// imageUrl:{
-//     type:String,
-// },
-// postion:{
-//     type:String,
-// }
-
-// })
-
-// module.exports = mongoose.model('Banner', bannerSchema)
-
-
-
 const mongoose = require('mongoose');
+
+const carImageSchema = new mongoose.Schema({
+  carId: {
+    type: String,
+    required: true
+  },
+  carName: {
+    type: String
+  },
+  imageUrl: {
+    type: String,
+    required: true
+  }
+}, { _id: false });
 
 const bannerSchema = new mongoose.Schema({
   slNo: {
-    type: String, // Or Number, depending on your preference
+    type: String,
   },
+
   name: {
-    type: String, // e.g., "Race track billboard_1"
+    type: String, // "Race Track Billboard"
     required: true
   },
+
+  // 🔥 Normal banner (single image)
   imageUrl: {
-    type: String, // The generated URL for the uploaded file
-    required: true
+    type: String,
   },
+
+  // 🔥 Car-specific banners
+  isCarSpecific: {
+    type: Boolean,
+    default: false
+  },
+
+  carImages: [carImageSchema], // multiple car images
+
   resolution: {
-    type: String, 
+    type: String,
   },
+
   status: {
     type: Boolean,
-    default: true 
+    default: true
   }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Banner', bannerSchema);

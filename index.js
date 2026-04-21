@@ -1,32 +1,25 @@
-const express  = require('express');
+const express = require('express');
 const app = express();
 const cors = require('cors');
 const port = 3000;
 require("dotenv").config();
 const connectDB = require("./config/db");
 require("dotenv").config();
-connectDB();    
-
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS" , "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+connectDB();
+app.use(cors());
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-app.use('/api/auth', require('./routes/auth'))  
+app.use('/api/auth', require('./routes/auth'))
 app.use("/api/game-sessions", require("./routes/gameRoutes"))
 app.use("/api/upload", require("./routes/uploadRoutes"))
 app.use("/api/banner", require("./routes/bannerRoutes"))
 app.use("/api/user", require("./routes/userRoutes"))
 app.use("/api/admin", require("./routes/adminRoutes"))
 app.get('/', (req, res) => {
-    res.send('Hello World!');
+  res.send('Hello World!');
 });
 
 app.listen(process.env.PORT || 8000, () => {
-    console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });

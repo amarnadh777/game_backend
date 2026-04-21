@@ -18,6 +18,9 @@ const bannerSchema = new mongoose.Schema({
   slNo: {
     type: String,
   },
+  bannerId: {
+    type: String,
+  },
 
   name: {
     type: String, // "Race Track Billboard"

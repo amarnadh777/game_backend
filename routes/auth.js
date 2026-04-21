@@ -8,3 +8,13 @@ routes.post("/resend-otp",authController.resendOtp)
 
 
 module.exports = routes;
+
+
+
+
+
+
+
+
+
+

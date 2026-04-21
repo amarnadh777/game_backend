@@ -54,7 +54,7 @@ const fs = require('fs')
 // };
 exports.uploadImage = async (req, res) => {
   try {
-    const { name, resolution, isCarSpecific } = req.body;
+    const { name, resolution, isCarSpecific, bannerId } = req.body;
 
     // ==============================
     // ❌ check files
@@ -79,7 +79,8 @@ exports.uploadImage = async (req, res) => {
       slNo: nextSlNo,
       name,
       resolution,
-      isCarSpecific: isCarSpecific === "true"
+      isCarSpecific: isCarSpecific === "true",
+      bannerId
     };
 
     // =====================================================

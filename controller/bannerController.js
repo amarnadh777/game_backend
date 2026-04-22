@@ -55,8 +55,6 @@ const getBaseUrl = (req) => {
 //     res.status(500).json({
 //       message: error.message
 //     });
-//   }
-// };
 exports.uploadImage = async (req, res) => {
   try {
     const { name, resolution, isCarSpecific, bannerId } = req.body;
@@ -70,8 +68,16 @@ exports.uploadImage = async (req, res) => {
       });
     }
 
+    const existingBanner = await Banner.findOne({ bannerId });
+
+    if (existingBanner) {
+      return res.status(400).json({
+        message: "Banner already exists for this placement. Please edit or delete the existing banner instead of creating a duplicate."
+      });
+    }
+
     // ==============================
-    // SL NO LOGIC (unchanged)
+    // SL NO LOGIC
     // ==============================
     const lastBanner = await Banner.findOne().sort({ slNo: -1 });
 
@@ -91,43 +97,66 @@ exports.uploadImage = async (req, res) => {
     // =====================================================
     // ✅ CASE 1: CAR SPECIFIC (MULTIPLE IMAGES)
     // =====================================================
-    // =====================================================
-    // ✅ CASE 1: CAR SPECIFIC (MULTIPLE IMAGES)
-    // =====================================================
     if (isCarSpecific === "true") {
       const carBanners = [];
-      const cars = Array.isArray(req.body.cars) ? req.body.cars : [req.body.cars]; // ← fix if only 1 car
 
-      req.files.forEach((file) => {
-        const match = file.fieldname.match(/cars\[(\d+)\]/);
+      // Check if `req.body.cars` is populated by extended body parsing natively
+      const cars = Array.isArray(req.body.cars) ? req.body.cars : [req.body.cars].filter(Boolean);
 
-        if (match) {
-          const index = parseInt(match[1]);
-          // const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-          const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
-          const carData = cars[index];
-          console.log("carData:", carData); // ← check this
+      if (cars.length > 0 && cars[0]) {
+        console.log("🔍 USING NESTED REQ.BODY.CARS ARRAY");
+        cars.forEach((carData, index) => {
+          const carId = carData.carId;
+          const carName = carData.carName;
 
-          carBanners.push({
-            carId: String(carData?.carId),    // ← force string
-            carName: String(carData?.carName),
-            imageUrl
-          });
-        }
-      });
+          const file = req.files.find(f => {
+            const m = f.fieldname.match(/cars\[(\d+)\]/);
+            return m && m[1] === String(index);
+          }) || req.files.find(f => f.fieldname === `cars[${index}][image]`);
+
+          if (file) {
+            const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
+            carBanners.push({ carId, carName, imageUrl });
+          }
+        });
+      } else {
+        console.log("🔍 USING FLAT REQ.BODY PARSING");
+        // Fallback for flat parsing if middleware changes
+        const carIndices = new Set();
+        Object.keys(req.body).forEach(key => {
+          const match = key.match(/cars\[(\d+)\]\[carId\]/);
+          if (match) carIndices.add(match[1]);
+        });
+
+        carIndices.forEach(index => {
+          const carId = req.body[`cars[${index}][carId]`];
+          const carName = req.body[`cars[${index}][carName]`];
+
+          const file = req.files.find(f => {
+            const m = f.fieldname.match(/cars\[(\d+)\]/);
+            return m && m[1] === String(index);
+          }) || req.files.find(f => f.fieldname === `cars[${index}][image]`);
+
+          if (file) {
+            const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
+            carBanners.push({ carId, carName, imageUrl });
+          }
+        });
+      }
+
+      if (carBanners.length === 0) {
+        return res.status(400).json({
+          message: "No car images matched properly. Ensure you upload images for the selected cars."
+        });
+      }
 
       bannerData.carImages = carBanners;
     }
-
     // =====================================================
     // ✅ CASE 2: NORMAL (SINGLE IMAGE)
     // =====================================================
     else {
-      // for normal banner → take first file
       const file = req.files[0];
-
-      // const imageUrl =
-      //   `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
       const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
       bannerData.imageUrl = imageUrl;
     }
@@ -183,62 +212,208 @@ exports.getBannerImages = async (req, res) => {
   }
 };
 
-exports.deleteBannerImage = async (req, res) => {
+// exports.deleteBannerImage = async (req, res) => {
 
+//   try {
+//     const { id } = req.params;
+//     const banner = await Banner.findById(id);
+
+//     if (!banner) {
+//       return res.status(404).json({
+//         message: "Banner image not found"
+//       });
+//     }
+
+//     let imageName = null
+//     if (banner.imageUrl) {
+
+//       imageName = banner.imageUrl.split("/uploads/")[1];
+//     }
+
+//     if (imageName) {
+
+//       const imagePath = path.join(__dirname, "..", "uploads", imageName);
+
+//       if (fs.existsSync(imagePath)) {
+//         await fs.promises.unlink(imagePath)
+//         console.log("Image deleted", imagePath)
+
+
+//       }
+//       else {
+//         console.log("Image not found on server");
+//       }
+//     }
+//     const deletedBanner = await Banner.findByIdAndDelete(id);
+//     res.status(200).json({
+//       message: "Banner image deleted successfully",
+//       deletedBanner
+//     });
+
+//     if (!deletedBanner) {
+//       return res.status(404).json({
+//         message: "Banner image not found"
+//       });
+//     }
+//   } catch (error) {
+
+//     console.log(error)
+//     res.status(500).json({
+//       message: error.message
+//     });
+//   }
+// }
+
+
+
+
+
+// exports.updateImage = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const banner = await Banner.findById(id);
+
+//     if (!banner) {
+//       return res.status(404).json({
+//         message: "Banner not found"
+//       });
+//     }
+
+//     // If new image uploaded
+//     if (req.file) {
+//       const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+//       banner.imageUrl = imageUrl;
+//     }
+
+//     // Update fields if provided
+//     if (req.body.name) banner.name = req.body.name;
+//     if (req.body.resolution) banner.resolution = req.body.resolution;
+//     if (req.body.status) banner.status = req.body.status;
+
+//     await banner.save();
+
+//     res.status(200).json({
+//       message: "Banner updated successfully",
+//       data: banner
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({
+//       message: error.message
+//     });
+//   }
+// };
+exports.deleteBannerImage = async (req, res) => {
   try {
     const { id } = req.params;
+
+    console.log("👉 DELETE REQUEST ID:", id);
+
     const banner = await Banner.findById(id);
 
     if (!banner) {
+      console.log("❌ Banner not found in DB");
       return res.status(404).json({
-        message: "Banner image not found"
+        message: "Banner not found"
       });
     }
 
-    let imageName = null
-    if (banner.imageUrl) {
+    console.log("✅ Banner found:", {
+      name: banner.name,
+      isCarSpecific: banner.isCarSpecific
+    });
 
-      imageName = banner.imageUrl.split("/uploads/")[1];
-    }
+    // ==========================================
+    // 🖼️ CASE 1: NORMAL IMAGE
+    // ==========================================
+    if (!banner.isCarSpecific && banner.imageUrl) {
+      console.log("🖼️ Normal banner delete flow");
 
-    if (imageName) {
+      const imageName = banner.imageUrl?.substring(
+        banner.imageUrl.lastIndexOf("/") + 1
+      );
+
+      console.log("📁 Extracted filename:", imageName);
 
       const imagePath = path.join(__dirname, "..", "uploads", imageName);
 
-      if (fs.existsSync(imagePath)) {
-        await fs.promises.unlink(imagePath)
-        console.log("Image deleted", imagePath)
+      console.log("📂 Full path:", imagePath);
 
-
-      }
-      else {
-        console.log("Image not found on server");
+      try {
+        if (fs.existsSync(imagePath)) {
+          await fs.promises.unlink(imagePath);
+          console.log("✅ Deleted normal banner image");
+        } else {
+          console.log("⚠️ File not found on server");
+        }
+      } catch (err) {
+        console.log("❌ Error deleting normal image:", err);
       }
     }
+
+    // ==========================================
+    // 🚗 CASE 2: CAR-SPECIFIC IMAGES
+    // ==========================================
+    if (banner.isCarSpecific) {
+      console.log("🚗 Car-specific delete flow");
+
+      console.log("📦 Car images:", banner.carImages);
+
+      if (!banner.carImages || banner.carImages.length === 0) {
+        console.log("⚠️ No car images found");
+      }
+
+      for (const car of banner.carImages) {
+        if (!car.imageUrl) {
+          console.log(`⚠️ Missing imageUrl for car: ${car.carName}`);
+          continue;
+        }
+
+        const imageName = car.imageUrl?.substring(
+          car.imageUrl.lastIndexOf("/") + 1
+        );
+
+        console.log(`🚗 Processing car: ${car.carName}`);
+        console.log("📁 Extracted filename:", imageName);
+
+        const imagePath = path.join(__dirname, "..", "uploads", imageName);
+
+        console.log("📂 Full path:", imagePath);
+
+        try {
+          if (fs.existsSync(imagePath)) {
+            await fs.promises.unlink(imagePath);
+            console.log(`✅ Deleted image for ${car.carName}`);
+          } else {
+            console.log(`⚠️ File NOT found for ${car.carName}`);
+          }
+        } catch (err) {
+          console.log(`❌ Error deleting image for ${car.carName}:`, err);
+        }
+      }
+    }
+
+    // ==========================================
+    // 🗑️ DELETE DB RECORD
+    // ==========================================
     const deletedBanner = await Banner.findByIdAndDelete(id);
-    res.status(200).json({
-      message: "Banner image deleted successfully",
+
+    console.log("🗑️ DB record deleted");
+
+    return res.status(200).json({
+      message: "Banner deleted successfully",
       deletedBanner
     });
 
-    if (!deletedBanner) {
-      return res.status(404).json({
-        message: "Banner image not found"
-      });
-    }
   } catch (error) {
+    console.error("🔥 DELETE ERROR:", error);
 
-    console.log(error)
     res.status(500).json({
       message: error.message
     });
   }
-}
-
-
-
-
-
+};
 exports.updateImage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -251,16 +426,98 @@ exports.updateImage = async (req, res) => {
       });
     }
 
-    // If new image uploaded
-    if (req.file) {
-      const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-      banner.imageUrl = imageUrl;
+    // ✅ Update basic fields
+    if (req.body.name) banner.name = req.body.name;
+    if (req.body.bannerId) banner.bannerId = req.body.bannerId;
+    if (req.body.status !== undefined) banner.status = req.body.status === 'true';
+
+    // ==========================================
+    // 🚗 CASE 1: CAR SPECIFIC UPDATE
+    // ==========================================
+    if (req.body.isCarSpecific === 'true' || req.body.isCarSpecific === true) {
+      banner.isCarSpecific = true;
+
+      const carImages = [];
+      const files = req.files || [];
+
+      // Check if `req.body.cars` is populated by extended body parsing natively
+      const parsedCars = Array.isArray(req.body.cars) ? req.body.cars : [req.body.cars].filter(Boolean);
+
+      if (parsedCars.length > 0 && parsedCars[0]) {
+        parsedCars.forEach((carData, index) => {
+          const carId = carData.carId;
+          const carName = carData.carName;
+
+          const file = files.find(f => {
+            const m = f.fieldname.match(/cars\[(\d+)\]/);
+            return m && m[1] === String(index);
+          }) || files.find(f => f.fieldname === `cars[${index}][image]`);
+
+          // Preserve existing imageUrl if available
+          let imageUrl = null;
+          const existingCar = banner.carImages && banner.carImages.find(c => c.carId === carId);
+          if (existingCar) {
+            imageUrl = existingCar.imageUrl;
+          }
+
+          if (file) {
+            imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
+          }
+
+          carImages.push({ carId, carName, imageUrl });
+        });
+      } else {
+        // Fallback for flat parsing
+        const carIndices = new Set();
+        Object.keys(req.body).forEach(key => {
+          const match = key.match(/cars\[(\d+)\]\[carId\]/);
+          if (match) carIndices.add(match[1]);
+        });
+
+        carIndices.forEach(index => {
+          const carId = req.body[`cars[${index}][carId]`];
+          const carName = req.body[`cars[${index}][carName]`];
+
+          const file = files.find(f => {
+            const m = f.fieldname.match(/cars\[(\d+)\]/);
+            return m && m[1] === String(index);
+          }) || files.find(f => f.fieldname === `cars[${index}][image]`);
+
+          // Preserve existing imageUrl if available
+          let imageUrl = null;
+          const existingCar = banner.carImages && banner.carImages.find(c => c.carId === carId);
+          if (existingCar) {
+            imageUrl = existingCar.imageUrl;
+          }
+
+          if (file) {
+            imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
+          }
+
+          carImages.push({ carId, carName, imageUrl });
+        });
+      }
+
+      banner.carImages = carImages;
+      banner.imageUrl = ""; // clear normal image
     }
 
-    // Update fields if provided
-    if (req.body.name) banner.name = req.body.name;
-    if (req.body.resolution) banner.resolution = req.body.resolution;
-    if (req.body.status) banner.status = req.body.status;
+    // ==========================================
+    // 🖼️ CASE 2: NORMAL BANNER UPDATE
+    // ==========================================
+    else {
+      banner.isCarSpecific = false;
+
+      if (req.files && req.files.length > 0) {
+        const file = req.files.find(f => f.fieldname === "files");
+
+        if (file) {
+          banner.imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
+        }
+      }
+
+      banner.carImages = []; // clear car-specific
+    }
 
     await banner.save();
 
@@ -275,8 +532,6 @@ exports.updateImage = async (req, res) => {
     });
   }
 };
-
-
 
 
 exports.toggleBannerStatus = async (req, res) => {

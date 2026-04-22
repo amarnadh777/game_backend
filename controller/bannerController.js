@@ -104,7 +104,7 @@ exports.uploadImage = async (req, res) => {
         if (match) {
           const index = parseInt(match[1]);
           // const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-          const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+          const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
           const carData = cars[index];
           console.log("carData:", carData); // ← check this
 
@@ -128,7 +128,7 @@ exports.uploadImage = async (req, res) => {
 
       // const imageUrl =
       //   `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-      const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+      const imageUrl = `${getBaseUrl(req)}/uploads/${file.filename}`;
       bannerData.imageUrl = imageUrl;
     }
 

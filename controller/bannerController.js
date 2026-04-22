@@ -3,7 +3,12 @@ const path = require('path')
 const fs = require('fs')
 
 
+const getBaseUrl = (req) => {
+  const protocol =
+    req.headers["x-forwarded-proto"] || req.protocol;
 
+  return `${protocol}://${req.get("host")}`;
+};
 
 
 // exports.uploadImage = async (req, res) => {
@@ -98,8 +103,8 @@ exports.uploadImage = async (req, res) => {
 
         if (match) {
           const index = parseInt(match[1]);
+          // const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
           const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-
           const carData = cars[index];
           console.log("carData:", carData); // ← check this
 
@@ -121,9 +126,9 @@ exports.uploadImage = async (req, res) => {
       // for normal banner → take first file
       const file = req.files[0];
 
-      const imageUrl =
-        `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-
+      // const imageUrl =
+      //   `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+      const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
       bannerData.imageUrl = imageUrl;
     }
 

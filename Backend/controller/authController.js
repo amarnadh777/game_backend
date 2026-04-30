@@ -235,8 +235,6 @@ exports.register = async (req, res) => {
     });
   }
 };
-const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Adjust path to your User model
 
 exports.simpleUserCreate = async (req, res) => {
   try {

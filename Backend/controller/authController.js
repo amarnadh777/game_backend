@@ -309,7 +309,7 @@ exports.nameLogin = async (req, res) => {
         message: "First name and last name are required",
       });
     }
-
+//ss
     // 🔍 Find user
     const user = await User.findOne({
       firstName: firstName.trim(),

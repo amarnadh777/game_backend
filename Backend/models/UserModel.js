@@ -18,7 +18,6 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     lowercase: true,
-    unique: true,
     sparse: true // ✅ allows multiple null values
   },
 

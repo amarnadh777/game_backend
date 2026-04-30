@@ -235,6 +235,9 @@ exports.register = async (req, res) => {
     });
   }
 };
+const jwt = require('jsonwebtoken');
+const User = require('../models/User'); // Adjust path to your User model
+
 exports.simpleUserCreate = async (req, res) => {
   try {
     const { firstName, lastName, email, country, city, phoneNumber } = req.body;
@@ -243,55 +246,52 @@ exports.simpleUserCreate = async (req, res) => {
     if (!firstName || !lastName || !country) {
       return res.status(400).json({
         success: false,
-        message: "First name, last name and country are required",
+        message: "First name, last name, and country are required",
+      });
+    }
+
+    // Clean up names to prevent accidental duplicates from trailing spaces
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+
+    // 🔍 Find by full name if exists
+    const existingUser = await User.findOne({
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName
+    });
+
+    // 🛑 If user exists, block registration and show message
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "A user with this full name already exists. Please log in instead.",
       });
     }
 
     // Normalize email (if provided)
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
 
-    let user = null;
-
-    // 🔍 Find by email if exists
-    if (normalizedEmail) {
-      user = await User.findOne({ email: normalizedEmail });
-    }
-
-    // 🔄 Update existing user
-    if (user) {
-      user.firstName = firstName;
-      user.lastName = lastName;
-      user.country = country;
-      user.city = city;
-      user.phoneNumber = phoneNumber;
-
-      await user.save();
-    } else {
-      // 🆕 Create new user
-      user = await User.create({
-        firstName,
-        lastName,
-        email: normalizedEmail,
-        country,
-        city,
-        phoneNumber,
-        isEmailVerified: false,
-      });
-    }
+    // 🆕 Create new user (Removed the update logic)
+    const user = await User.create({
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      email: normalizedEmail,
+      country,
+      city,
+      phoneNumber,
+      isEmailVerified: false,
+    });
 
     // 🔐 ✅ Generate token
     const token = jwt.sign(
-      {
-        userId: user._id,
-  
-      },
+      { userId: user._id },
       process.env.JWT_SECRET || "SECRET_KEY",
     );
 
-    // ✅ Response
-    return res.status(200).json({
+    // ✅ Response (Changed status to 201 Created)
+    return res.status(201).json({
       success: true,
-      message: "User saved successfully",
+      message: "User registered successfully",
       token, // 🔥 added token
       data: {
         user,
@@ -299,7 +299,7 @@ exports.simpleUserCreate = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Simple User Error:", error);
+    console.error("Simple User Create Error:", error);
 
     return res.status(500).json({
       success: false,

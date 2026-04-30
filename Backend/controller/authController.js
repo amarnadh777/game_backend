@@ -235,6 +235,129 @@ exports.register = async (req, res) => {
     });
   }
 };
+exports.simpleUserCreate = async (req, res) => {
+  try {
+    const { firstName, lastName, email, country, city, phoneNumber } = req.body;
+
+    // ✅ Required fields
+    if (!firstName || !lastName || !country) {
+      return res.status(400).json({
+        success: false,
+        message: "First name, last name and country are required",
+      });
+    }
+
+    // Normalize email (if provided)
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+    let user = null;
+
+    // 🔍 Find by email if exists
+    if (normalizedEmail) {
+      user = await User.findOne({ email: normalizedEmail });
+    }
+
+    // 🔄 Update existing user
+    if (user) {
+      user.firstName = firstName;
+      user.lastName = lastName;
+      user.country = country;
+      user.city = city;
+      user.phoneNumber = phoneNumber;
+
+      await user.save();
+    } else {
+      // 🆕 Create new user
+      user = await User.create({
+        firstName,
+        lastName,
+        email: normalizedEmail,
+        country,
+        city,
+        phoneNumber,
+        isEmailVerified: false,
+      });
+    }
+
+    // 🔐 ✅ Generate token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+  
+      },
+      process.env.JWT_SECRET || "SECRET_KEY",
+    );
+
+    // ✅ Response
+    return res.status(200).json({
+      success: true,
+      message: "User saved successfully",
+      token, // 🔥 added token
+      data: {
+        user,
+      },
+    });
+
+  } catch (error) {
+    console.error("Simple User Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+exports.nameLogin = async (req, res) => {
+  try {
+    const { firstName, lastName } = req.body;
+
+    // ✅ Validation
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: "First name and last name are required",
+      });
+    }
+
+    // 🔍 Find user
+    const user = await User.findOne({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 🔐 Generate token
+    const token = jwt.sign(
+      { userId: user._id},
+      process.env.JWT_SECRET || "SECRET_KEY",
+    );
+
+    // ✅ Response
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      data: {
+        user,
+      },
+    });
+
+  } catch (error) {
+    console.error("Name Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 
 
 exports.verifyOtp = async (req, res) => {

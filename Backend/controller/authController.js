@@ -261,7 +261,7 @@ exports.simpleUserCreate = async (req, res) => {
     if (existingUser) {
       return res.status(200).json({
         success: false,
-        message: "User already exists, please login",
+        message: "full name alrady exist",
         errorCode: "USER_ALREADY_EXISTS",
       });
     }

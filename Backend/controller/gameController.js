@@ -144,7 +144,10 @@ exports.finishGameDirect = async (req, res) => {
   try {
     const userId = req.user._id;
     const { highestSpeed, timeTaken, vehicle } = req.body;
-const parsedTime = Number(timeTaken);
+
+    // ✅ Convert to number + keep 2 decimal places
+    const parsedTime = Number(Number(timeTaken).toFixed(2));
+
     // ✅ Validation (allow 0 values)
     if (highestSpeed == null || timeTaken == null) {
       return res.status(400).json({
@@ -165,11 +168,11 @@ const parsedTime = Number(timeTaken);
       });
     }
 
-    // ✅ Create session
+    // ✅ Create session (FIXED HERE 👇)
     const session = await GameSession.create({
       userId,
       highestSpeed,
-      timeTaken,
+      timeTaken: parsedTime, // ✅ FIX APPLIED
       vehicle,
       status: "COMPLETED",
       completedAt: new Date(),
@@ -185,17 +188,17 @@ const parsedTime = Number(timeTaken);
     const betterUsers = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
-      // best session per user
       { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
+
       {
         $group: {
           _id: "$userId",
           bestSession: { $first: "$$ROOT" },
         },
       },
+
       { $replaceRoot: { newRoot: "$bestSession" } },
 
-      // join user
       {
         $lookup: {
           from: "users",
@@ -204,16 +207,11 @@ const parsedTime = Number(timeTaken);
           as: "user",
         },
       },
+
       { $unwind: "$user" },
 
-      // only active users
-      {
-        $match: {
-          "user.status": true,
-        },
-      },
+      { $match: { "user.status": true } },
 
-      // better players
       {
         $match: {
           $or: [
@@ -236,28 +234,27 @@ const parsedTime = Number(timeTaken);
 
     const rank = (betterUsers[0]?.count || 0) + 1;
 
-    // ⭐ NEW: Fetch the user's all-time personal best
-    // Sort by lowest time taken first. If tied, sort by highest speed.
+    // ⭐ Best score
     const bestScore = await GameSession.findOne({
       userId,
       status: "COMPLETED"
     }).sort({ timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 });
 
-    // 🏆 Calculate rank for best score
+    // 🏆 Rank for best score
     const betterUsersBestScore = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
 
-      // best session per user
       { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
+
       {
         $group: {
           _id: "$userId",
           bestSession: { $first: "$$ROOT" },
         },
       },
+
       { $replaceRoot: { newRoot: "$bestSession" } },
 
-      // join user
       {
         $lookup: {
           from: "users",
@@ -266,16 +263,11 @@ const parsedTime = Number(timeTaken);
           as: "user",
         },
       },
+
       { $unwind: "$user" },
 
-      // only active users
-      {
-        $match: {
-          "user.status": true,
-        },
-      },
+      { $match: { "user.status": true } },
 
-      // better players
       {
         $match: {
           $or: [
@@ -307,7 +299,7 @@ const parsedTime = Number(timeTaken);
         session: {
           _id: session._id,
           highestSpeed: session.highestSpeed,
-          timeTaken: session.timeTaken,
+          timeTaken: session.timeTaken, // ✅ will be 2 decimal
           vehicle: session.vehicle,
           status: session.status,
           completedAt: session.completedAt
@@ -321,7 +313,7 @@ const parsedTime = Number(timeTaken);
           vehicle: bestScore.vehicle,
           completedAt: bestScore.completedAt,
           rank: bestScoreRank
-        } // Added bestScore to the response
+        }
       }
     });
 

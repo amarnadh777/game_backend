@@ -254,7 +254,7 @@ exports.simpleUserCreate = async (req, res) => {
     const existingUser = await User.findOne({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      country: country.trim(),
+    
     });
 
     // ❌ If exists → send message (NO LOGIN)

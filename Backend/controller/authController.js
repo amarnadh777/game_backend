@@ -250,31 +250,31 @@ exports.simpleUserCreate = async (req, res) => {
 
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
 
-    // 🔥 Check existing by name + country
-    let user = await User.findOne({
+    // 🔥 Check existing user
+    const existingUser = await User.findOne({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       country: country.trim(),
     });
 
-    if (user) {
-      // ✅ OPTIONAL: update details
-      user.city = city || user.city;
-      user.phoneNumber = phoneNumber || user.phoneNumber;
-      if (normalizedEmail) user.email = normalizedEmail;
-
-      await user.save();
-    } else {
-      // 🆕 Create new user
-      user = await User.create({
-        firstName,
-        lastName,
-        email: normalizedEmail,
-        country,
-        city,
-        phoneNumber,
+    // ❌ If exists → send message (NO LOGIN)
+    if (existingUser) {
+      return res.status(200).json({
+        success: false,
+        message: "User already exists, please login",
+        errorCode: "USER_ALREADY_EXISTS",
       });
     }
+
+    // 🆕 Create new user
+    const user = await User.create({
+      firstName,
+      lastName,
+      email: normalizedEmail,
+      country,
+      city,
+      phoneNumber,
+    });
 
     // 🔐 Generate token
     const token = jwt.sign(
@@ -282,9 +282,9 @@ exports.simpleUserCreate = async (req, res) => {
       process.env.JWT_SECRET || "SECRET_KEY"
     );
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
-      message: user ? "Login successful" : "User created",
+      message: "User created successfully",
       token,
       data: { user },
     });

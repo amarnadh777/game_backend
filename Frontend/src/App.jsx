@@ -5,37 +5,40 @@ import './App.css'
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardBanner from './pages/DashboardBanner'
+import Login from "./pages/Login"
 import Layout from './layouts/Layout';
 import UserDetails from './pages/UserDetails';
 import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute'; // Import the new component
 import { Toaster } from 'react-hot-toast';
 
 function App() {
-
-
   return (
     <>
-    <Toaster position="top-right" />
-<BrowserRouter>
-      <Routes>
-        
-        {/* The Parent Route uses the Layout */}
-        <Route path="/" element={<Layout />}>
-  
-          <Route index element={<Navigate to="/banners" replace />} />
+      <Toaster position="top-right" />
+      <BrowserRouter>
+        <Routes>
           
-          {/* Your Banner Management Page */}
-          <Route path="banners" element={<DashboardBanner />} />
-          <Route path="users" element={<UserDetails />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          {/* Public Route (No Layout, No Protection) */}
+          <Route path="/login" element={<Login />} />
 
+          {/* Protected Routes Wrapper */}
+          <Route element={<ProtectedRoute />}>
+            
+            {/* Everything inside here is now protected! */}
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Navigate to="/banners" replace />} />
+              
+              {/* Your Management Pages */}
+              <Route path="banners" element={<DashboardBanner />} />
+              <Route path="users" element={<UserDetails />} />
+              <Route path="dashboard" element={<Dashboard />} />
+            </Route>
 
+          </Route>
 
-
-        </Route>
-
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
     </>
   )
 }

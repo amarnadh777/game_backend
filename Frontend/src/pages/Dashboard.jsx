@@ -75,7 +75,7 @@ fetchData();
         />
         <StatCard 
           title="Most Played Vehicle"
-          value={dashboardData !== null ? dashboardData.mostUsedVehicle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : "Jetour G700"}
+          value={dashboardData !== null ? dashboardData.mostUsedVehicle?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : "Jetour G700"}
           trend="20% from yesterday"
           icon={CarFront}
         />

@@ -144,7 +144,7 @@ exports.finishGameDirect = async (req, res) => {
   try {
     const userId = req.user._id;
     const { highestSpeed, timeTaken, vehicle } = req.body;
-
+const parsedTime = Number(timeTaken);
     // ✅ Validation (allow 0 values)
     if (highestSpeed == null || timeTaken == null) {
       return res.status(400).json({
@@ -893,50 +893,61 @@ exports.getActiveLeaderboard = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-const basePipeline = [
-  { $match: { status: "COMPLETED" } },
+    const basePipeline = [
+      { $match: { status: "COMPLETED" } },
 
-  // ✅ Find the user's best session by lowest time taken
-  { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
+      // ✅ IMPORTANT FIX: force timeTaken to number (handles string + float safely)
+      {
+        $addFields: {
+          timeTaken: { $toDouble: "$timeTaken" }
+        }
+      },
 
-  {
-    $group: {
-      _id: "$userId",
-      bestSession: { $first: "$$ROOT" },
-    },
-  },
+      // ✅ Find best session per user
+      { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1, _id: -1 } },
 
-  { $replaceRoot: { newRoot: "$bestSession" } },
+      {
+        $group: {
+          _id: "$userId",
+          bestSession: { $first: "$$ROOT" },
+        },
+      },
 
-  {
-    $lookup: {
-      from: "users",
-      localField: "userId",
-      foreignField: "_id",
-      as: "user",
-    },
-  },
+      { $replaceRoot: { newRoot: "$bestSession" } },
 
-  { $unwind: "$user" },
+      // 👤 Join user
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
 
-  { $match: { "user.status": true } },
+      { $unwind: "$user" },
 
-  {
-    $sort: {
-      timeTaken: 1,
-      highestSpeed: -1,
-      completedAt: -1,
-    },
-  },
-];
-    // ✅ leaderboard data
+      // ✅ Only active users
+      { $match: { "user.status": true } },
+
+      // ✅ Final ranking sort
+      {
+        $sort: {
+          timeTaken: 1,
+          highestSpeed: -1,
+          completedAt: -1,
+        },
+      },
+    ];
+
+    // 🏆 leaderboard data
     const leaderboard = await GameSession.aggregate([
       ...basePipeline,
       { $skip: skip },
       { $limit: limit },
     ]);
 
-    // ✅ correct total (same pipeline without pagination)
+    // 📊 total count
     const totalResult = await GameSession.aggregate([
       ...basePipeline,
       { $count: "total" },
@@ -944,15 +955,18 @@ const basePipeline = [
 
     const total = totalResult[0]?.total || 0;
 
-    // 🎯 format
+    // 🎯 format response
     const formatted = leaderboard.map((item, index) => ({
-      rank: skip + index + 1, // page rank (UI use)
+      rank: skip + index + 1,
       user: item.user._id,
       firstName: item.user.firstName,
       lastName: item.user.lastName,
       email: item.user.email,
       highestSpeed: item.highestSpeed,
-      timeTaken: item.timeTaken,
+
+      // ✅ OPTIONAL: clean decimal (remove if you want raw value)
+      timeTaken: Number(item.timeTaken.toFixed(2)),
+
       completedAt: item.completedAt,
       country: item.user.country,
       phoneNumber: item.user.phoneNumber,

@@ -18,9 +18,18 @@ const StatCard = ({ title, value, trend, icon: Icon }) => {
           {value}
         </p>
         
-        <p className="text-[12px] font-medium text-[#2F80ED] truncate">
-          {trend}
-        </p>
+        {/* ONLY TEXT COLOR CHANGES BASED ON TREND */}
+        {typeof trend === 'number' ? (
+          <p className={`text-[12px] font-medium truncate ${
+            trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-500'
+          }`}>
+            {trend > 0 ? '↑ ' : trend < 0 ? '↓ ' : ''}{Math.abs(trend)}% from yesterday
+          </p>
+        ) : (
+          <p className="text-[12px] font-medium text-transparent truncate select-none">
+            _ {/* Invisible spacer to keep layout from jumping on cards without a trend */}
+          </p>
+        )}
         
       </div>
 

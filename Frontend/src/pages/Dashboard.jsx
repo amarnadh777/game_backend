@@ -8,31 +8,25 @@ import ParticipantsByCoutry from '../components/dashboard/ParticipantsByCoutry';
 import axios from 'axios';
 
 function Dashboard() {
-
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(()=>{
-  
-
-const fetchData = async() => {
-
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/analytics`);
-    if(response.status === 200){
-      console.log(response.data); 
-      setDashboardData(response.data.data);
+  useEffect(()=>{
+    const fetchData = async() => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/analytics`);
+        if(response.status === 200){
+          console.log(response.data); 
+          setDashboardData(response.data.data);
+        }
+      } catch (error) {
+        console.error("API Connection Error:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-  } catch (error) {
-    console.error("API Connection Error:", error);
-  } finally {
-    setLoading(false);
-  }
-}
-
-fetchData();
-
-},[])
+    fetchData();
+  },[])
 
   if (loading) {
     return (
@@ -43,10 +37,8 @@ fetchData();
   }
 
   return (
-    // Replaced bg-gray-50 with your exact background color: bg-[#EBF5FF]
     <div className="w-full p md:p-8 bg-[#EBF5FF] min-h-screen flex flex-col gap-6">
       
-      {/* Page Title added from your screenshot */}
       <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-wide mb-2">
         Welcome To Kanoo Daily Rental
       </h1>
@@ -58,25 +50,25 @@ fetchData();
         <StatCard
           title="Total number of participants"
           value={dashboardData !== null ? dashboardData.totalParticipants : "1400"}
-          trend="10% from yesterday"
+          trend={dashboardData !== null ? dashboardData.participantGrowth : 0} // ✅ Replaced hardcoded -2
           icon={Users}
         />
         <StatCard 
           title="Total number of registration"
           value={dashboardData !== null ? dashboardData.totalUsers : "1860"}
-          trend="20% from yesterday"
+          trend={dashboardData !== null ? dashboardData.registrationGrowth : 0} // ✅ Replaced string
           icon={UserPlus}
         />
         <StatCard 
           title="Game Replay"
           value={dashboardData !== null ? dashboardData.totalReplays : "370"}
-          trend="20% from yesterday"
+          trend={dashboardData !== null ? dashboardData.replayGrowth : 0} // ✅ Replaced string
           icon={PlaySquare}
         />
         <StatCard 
           title="Most Played Vehicle"
-          value={dashboardData !== null ? dashboardData.mostUsedVehicle?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : "Jetour G700"}
-          trend="20% from yesterday"
+          value={dashboardData !== null && dashboardData.mostUsedVehicle ? dashboardData.mostUsedVehicle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : "Jetour G700"}
+          trend={null} // ✅ Set to null so the StatCard hides the trend text completely for the vehicle
           icon={CarFront}
         />
       </div>

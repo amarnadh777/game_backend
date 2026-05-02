@@ -372,22 +372,38 @@ const DashboardBanner = () => {
 
   const handleSubmit = async (e) => {
    e.preventDefault();
-    if (!editingId && !applyToSpecificCars && !formData.file) { toast.error("Please select an image file to upload."); return; }
-    if (!editingId && applyToSpecificCars && specificCars.filter(c => c.enabled).length === 0) { toast.error("Please select at least one specific car."); return; }
-    if (!formData.name) { toast.error("Please provide a banner name."); return; }
+   
+    // 1. If NOT editing and NOT specific cars, a file is required.
+    if (!editingId && !applyToSpecificCars && !formData.file) { 
+      toast.error("Please select an image file to upload."); 
+      return; 
+    }
+
+    // 2. FIXED: If specific cars is selected, at least one car MUST be checked (for BOTH Add and Edit).
+    if (applyToSpecificCars && specificCars.filter(c => c.enabled).length === 0) { 
+      toast.error("Please select at least one specific car."); 
+      return; 
+    }
+
+    // 3. Name is always required
+    if (!formData.name) { 
+      toast.error("Please provide a banner name."); 
+      return; 
+    }
 
     setIsSubmitting(true);
     const submitData = new FormData();
     submitData.append('name', formData.name);
     submitData.append('status', formData.status);
 
-    // ✅ NEW: Find the matching ID and append it to FormData
+    // Find the matching ID and append it to FormData
     const selectedBanner = BANNER_MAPPING.find(b => b.name === formData.name);
     if (selectedBanner) {
       submitData.append('bannerId', selectedBanner.id);
     }
+    
     // ==========================================
-    // ✅ NEW LOGIC: Match Backend Expectations
+    // Match Backend Expectations
     // ==========================================
     if (applyToSpecificCars) {
       const enabledCars = specificCars.filter(c => c.enabled);
@@ -406,7 +422,6 @@ const DashboardBanner = () => {
         }
       });
     } 
-    
     else {
       // Normal single banner upload
       submitData.append('isCarSpecific', 'false');
@@ -416,7 +431,7 @@ const DashboardBanner = () => {
     }
 
     // ==========================================
-    // ✅ API CALLS (Unchanged)
+    // API CALLS 
     // ==========================================
     try {
       if (editingId) {
@@ -531,25 +546,39 @@ const DashboardBanner = () => {
                   </td>
 
                   {/* Name Column with Car Tags */}
-                  <td className="py-4 px-6">
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[14px] font-medium text-gray-800">{banner.name}</span>
-                      
-                      {/* ✅ Render specific car badges here */}
-                      {banner.isCarSpecific && banner.carImages && banner.carImages.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-0.5">
-                          {banner.carImages.map((car, idx) => (
-                            <span 
-                              key={idx} 
-                              className="px-2 py-0.5 bg-[#EBF5FF] border border-[#bae6fd] text-[#0A3D81] text-[10px] font-semibold rounded-md"
-                            >
-                              {car.carName}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </td>
+             {/* Name Column with Car Tags & Mini-Images */}
+<td className="py-4 px-6 min-w-[250px]">
+  <div className="flex flex-col gap-2">
+    <span className="text-[14px] font-bold text-gray-800">{banner.name}</span>
+    
+    {/* Render specific car badges with tiny thumbnails */}
+    {banner.isCarSpecific && banner.carImages && banner.carImages.length > 0 && (
+      <div className="flex flex-wrap gap-2 mt-1">
+        {banner.carImages.map((car, idx) => (
+          <div 
+            key={idx} 
+            className="flex items-center gap-2 p-1 pr-2.5 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors cursor-default"
+            title={`Banner for ${car.carName}`}
+          >
+            {/* Tiny Thumbnail */}
+            <div className="w-7 h-7 bg-white rounded overflow-hidden border border-gray-200 flex-shrink-0">
+              <img 
+                src={car.imageUrl} 
+                alt={car.carName} 
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.style.display = 'none'; }} 
+              />
+            </div>
+            {/* Car Name */}
+            <span className="text-[11px] font-semibold text-[#0A3D81] whitespace-nowrap">
+              {car.carName}
+            </span>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</td>
 
                   {/* Status Text Column (Plain Text) */}
                   <td className="py-4 px-6">
@@ -766,12 +795,7 @@ const DashboardBanner = () => {
                             <span className="text-[13px] text-gray-500 truncate flex-1 min-w-[100px]">
                               {formData.file ? formData.file.name : 'No file selected'}
                             </span>
-                            <label 
-                              htmlFor="file-upload"
-                              className="bg-[#F1C82A] hover:bg-[#dfb81a] text-slate-800 text-[13px] font-semibold px-5 py-2 rounded cursor-pointer transition-colors shadow-sm ml-auto shrink-0"
-                            >
-                              Upload
-                            </label>
+                          
                           </div>
                         </div>
                       )}
@@ -874,7 +898,7 @@ const DashboardBanner = () => {
                           
                           {/* Card Header (Name + Toggle) */}
                           <div className="flex justify-between items-center">
-                            <span className="font-bold text-[14px] text-gray-800 flex items-center gap-2">🚗 {car.name}</span>
+                            <span className="font-bold text-[14px] text-gray-800 flex items-center gap-2"> {car.name}</span>
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input 
                                 type="checkbox" 

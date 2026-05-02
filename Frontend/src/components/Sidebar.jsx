@@ -1,7 +1,20 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { NavLink, useNavigate } from 'react-router-dom';
+
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // 1. Remove auth data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('adminUser');
+    toast.success('Logged out successfully!');
+    // 2. Redirect the user back to the login page
+    navigate('/login', { replace: true });
+  };
+
   const navItemClasses = ({ isActive }) => 
     `flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm group ${
       isActive 
@@ -13,7 +26,6 @@ const Sidebar = () => {
     `w-5 h-5 ${isActive ? 'text-indigo-900' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`;
 
   return (
-    // Removed top padding/margin so it connects perfectly to the header
     <aside className="w-[243px] bg-[#11087C] text-white flex flex-col z-20 relative overflow-hidden">
       
       {/* Decorative background blur */}
@@ -53,7 +65,10 @@ const Sidebar = () => {
       
       {/* Logout Button */}
       <div className="p-6 border-t border-indigo-800/50">
-         <button className="flex items-center gap-2 text-sm font-medium text-indigo-200 hover:text-white transition-colors w-full group">
+         <button 
+           onClick={handleLogout} 
+           className="flex items-center gap-2 text-sm font-medium text-indigo-200 hover:text-white transition-colors w-full group"
+         >
            <svg className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
            Logout
          </button>

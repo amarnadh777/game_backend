@@ -10,6 +10,16 @@ exports.analytics = async (req, res) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+    // ==========================================
+    // DATE DEFINITIONS FOR "YESTERDAY" VS "TODAY"
+    // ==========================================
+    const now = new Date();
+    // Start of Today (Midnight)
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Start of Yesterday (Midnight yesterday)
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
     const weeklyGraphData = [
       { day: "Mon", participants: 0 },
       { day: "Tue", participants: 0 },
@@ -22,23 +32,20 @@ exports.analytics = async (req, res) => {
 
     // Aggregate participants by day of the week
     const dailyParticipantsData = await GameSession.aggregate([
-      // 1. Only get completed games from the last 7 days
       {
         $match: {
           status: "COMPLETED",
           completedAt: { $gte: sevenDaysAgo },
         },
       },
-      // 2. Group by the Day of the Week AND User ID to get unique participants per day
       {
         $group: {
           _id: {
-            dayOfWeek: { $dayOfWeek: "$completedAt" }, // Returns 1 (Sun) to 7 (Sat)
+            dayOfWeek: { $dayOfWeek: "$completedAt" }, 
             userId: "$userId",
           },
         },
       },
-      // 3. Group again by just the Day of the Week and count the unique users
       {
         $group: {
           _id: "$_id.dayOfWeek",
@@ -47,16 +54,9 @@ exports.analytics = async (req, res) => {
       },
     ]);
 
-    // --- Format for the Frontend ---
-    // We want an array matching: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-
     dailyParticipantsData.forEach((data) => {
-      const mongoDay = data._id; // 1 = Sun, 2 = Mon, 3 = Tue...
-
-      // Convert MongoDB's 1-7 (Sun-Sat) to our array index 0-6 (Mon-Sun)
+      const mongoDay = data._id; 
       const arrayIndex = mongoDay === 1 ? 6 : mongoDay - 2;
-
-      // Update the 'participants' count inside the specific day's object
       weeklyGraphData[arrayIndex].participants = data.participantsCount;
     });
 
@@ -80,15 +80,11 @@ exports.analytics = async (req, res) => {
 
     // 4. Most Used Vehicle
     const mostUsedVehicleData = await GameSession.aggregate([
-      // Only count vehicles from completed sessions (and ensure vehicle exists)
       {
         $match: { status: "COMPLETED", vehicle: { $exists: true, $ne: null } },
       },
-      // Group by the vehicle name and count occurrences
       { $group: { _id: "$vehicle", count: { $sum: 1 } } },
-      // Sort by the count in descending order (highest first)
       { $sort: { count: -1 } },
-      // Keep only the top result
       { $limit: 1 },
     ]);
 
@@ -96,13 +92,12 @@ exports.analytics = async (req, res) => {
       { $match: { status: "COMPLETED" } },
       {
         $group: {
-          _id: { $hour: "$completedAt" }, // Extracts the hour (0 to 23)
+          _id: { $hour: "$completedAt" }, 
           participantsCount: { $sum: 1 },
         },
       },
     ]);
 
-    // 2. Pre-fill our array with the specific 2-hour time buckets
     const timingGraphData = [
       { time: "8am", participants: 0 },
       { time: "10am", participants: 0 },
@@ -113,28 +108,17 @@ exports.analytics = async (req, res) => {
       { time: "8pm", participants: 0 },
     ];
 
-    // 3. Map the 24-hour format into your specific buckets
     hourlyParticipantsData.forEach((data) => {
-      const hour = data._id; // This will be a number from 0 to 23
+      const hour = data._id; 
       const count = data.participantsCount;
 
-      // We group them into 2-hour windows
-      if (hour >= 8 && hour < 10) {
-        timingGraphData[0].participants += count; // 8:00 AM - 9:59 AM
-      } else if (hour >= 10 && hour < 12) {
-        timingGraphData[1].participants += count; // 10:00 AM - 11:59 AM
-      } else if (hour >= 12 && hour < 14) {
-        timingGraphData[2].participants += count; // 12:00 PM - 1:59 PM
-      } else if (hour >= 14 && hour < 16) {
-        timingGraphData[3].participants += count; // 2:00 PM - 3:59 PM
-      } else if (hour >= 16 && hour < 18) {
-        timingGraphData[4].participants += count; // 4:00 PM - 5:59 PM
-      } else if (hour >= 18 && hour < 20) {
-        timingGraphData[5].participants += count; // 6:00 PM - 7:59 PM
-      } else if (hour >= 20 && hour < 22) {
-        timingGraphData[6].participants += count; // 8:00 PM - 9:59 PM
-      }
-      // Note: Hours from 10pm to 7am are ignored in this specific chart based on your labels.
+      if (hour >= 8 && hour < 10) timingGraphData[0].participants += count;
+      else if (hour >= 10 && hour < 12) timingGraphData[1].participants += count;
+      else if (hour >= 12 && hour < 14) timingGraphData[2].participants += count;
+      else if (hour >= 14 && hour < 16) timingGraphData[3].participants += count;
+      else if (hour >= 16 && hour < 18) timingGraphData[4].participants += count;
+      else if (hour >= 18 && hour < 20) timingGraphData[5].participants += count;
+      else if (hour >= 20 && hour < 22) timingGraphData[6].participants += count;
     });
 
     const vehicleCounts = await GameSession.aggregate([
@@ -160,7 +144,6 @@ exports.analytics = async (req, res) => {
       },
     ]);
 
-    // 2. Prepare the final array with your specific vehicle codes
     const mostPlayedVehicles = [
       { name: "toyota_land_cruiser_gx_r_3_5l", count: 0 },
       { name: "lexus_lx_600_urban", count: 0 },
@@ -169,98 +152,117 @@ exports.analytics = async (req, res) => {
       { name: "jetour_g700", count: 0 },
     ];
 
-    // 3. Map the database results to our pre-defined list
     vehicleCounts.forEach((item) => {
       const vehicle = mostPlayedVehicles.find((v) => v.name === item._id);
-      if (vehicle) {
-        vehicle.count = item.count;
-      }
+      if (vehicle) vehicle.count = item.count;
     });
 
-    // --- Participants By Country Stats ---
-
-    // 1. Join GameSession with User to get the country, then group and count
+    // ==========================================
+    // DYNAMIC COUNTRY LIST
+    // ==========================================
+   // ==========================================
+    // DYNAMIC COUNTRY LIST (FIXED FOR UNIQUE USERS)
+    // ==========================================
     const countryCounts = await GameSession.aggregate([
       { $match: { status: "COMPLETED" } },
       {
-        // This acts like a SQL "JOIN" to grab the user's data
         $lookup: {
-          from: "users", // Make sure this matches your actual MongoDB collection name for users (usually lowercase plural)
+          from: "users", 
           localField: "userId",
           foreignField: "_id",
           as: "user",
         },
       },
-      { $unwind: "$user" }, // Flattens the array created by $lookup
+      { $unwind: "$user" },
       {
-        // Filter only for the specific countries you want
+        // Check that country actually exists and isn't empty
         $match: {
-          "user.country": {
-            $in: [
-              "UAE",
-              "Ireland",
-              "India",
-              "Switzerland",
-              "USA",
-              "Germany",
-              "Japan",
-              "South Korea",
-              "France",
-              "Brazil",
-            ],
-          },
-        },
+          "user.country": { $exists: true, $ne: null, $ne: "" }
+        }
       },
       {
-        // Group by the country name and count
+        // Step 1: Group by User AND Country first to filter out duplicates. 
+        // If one user played 100 times, this reduces them down to 1 record.
         $group: {
-          _id: "$user.country",
+          _id: { 
+            userId: "$userId", 
+            country: "$user.country" 
+          }
+        }
+      },
+      {
+        // Step 2: Now group strictly by the country and count those unique users!
+        $group: {
+          _id: "$_id.country",
           count: { $sum: 1 },
         },
       },
+      {
+        // Sort highest counts to the top
+        $sort: { count: -1 } 
+      }
     ]);
 
-    // 2. Prepare the final array with your specific countries
-    const participantsByCountry = [
-      { country: "UAE", count: 0 },
-      { country: "Ireland", count: 0 },
-      { country: "India", count: 0 },
-      { country: "Switzerland", count: 0 },
-      { country: "USA", count: 0 },
-      { country: "Germany", count: 0 },
-      { country: "Japan", count: 0 },
-      { country: "South Korea", count: 0 },
-      { country: "France", count: 0 },
-      { country: "Brazil", count: 0 },
-    ];
+    // Map the database results dynamically to the frontend format
+    const participantsByCountry = countryCounts.map((item) => ({
+      country: item._id,
+      count: item.count
+    }));
 
-    // 3. Map the database results to our pre-defined list
-    countryCounts.forEach((item) => {
-      const countryData = participantsByCountry.find(
-        (c) => c.country === item._id,
-      );
-      if (countryData) {
-        countryData.count = item.count;
-      }
-    });
-    // --- Format the extracted data for a cleaner JSON response ---
+    const totalParticipants = currentParticipantsData.length > 0 ? currentParticipantsData[0].total_participants : 0;
+    const totalReplays = replaydata.reduce((acc, curr) => acc + curr.replays, 0);
+    const mostUsedVehicle = mostUsedVehicleData.length > 0 ? mostUsedVehicleData[0]._id : null;
 
-    // Extract the number from the array, default to 0 if empty
-    const totalParticipants =
-      currentParticipantsData.length > 0
-        ? currentParticipantsData[0].total_participants
-        : 0;
 
-    // Calculate the total number of replays across all users
-    const totalReplays = replaydata.reduce(
-      (acc, curr) => acc + curr.replays,
-      0,
-    );
+    // ==========================================
+    // GROWTH CALCULATIONS (Today vs Yesterday)
+    // ==========================================
 
-    // Extract the vehicle name, default to null if no games have been played
-    const mostUsedVehicle =
-      mostUsedVehicleData.length > 0 ? mostUsedVehicleData[0]._id : null;
+    // Helper function to calculate percentage
+    const calculatePercentage = (today, yesterday) => {
+      if (yesterday === 0) return today > 0 ? 100 : 0; // If 0 yesterday but >0 today, that's 100% growth
+      const percentage = ((today - yesterday) / yesterday) * 100;
+      return Number(percentage.toFixed(1)); // Rounds to 1 decimal place (e.g., 10.5)
+    };
 
+    // --- 1. Registration Growth ---
+    const usersToday = await User.countDocuments({ createdAt: { $gte: startOfToday } });
+    const usersYesterday = await User.countDocuments({ createdAt: { $gte: startOfYesterday, $lt: startOfToday } });
+    const registrationGrowth = calculatePercentage(usersToday, usersYesterday);
+
+    // --- 2. Participant Growth ---
+    // Participants Today
+    const partsTodayAgg = await GameSession.aggregate([
+      { $match: { status: "COMPLETED", completedAt: { $gte: startOfToday } } },
+      { $group: { _id: "$userId" } },
+      { $count: "count" }
+    ]);
+    const partsToday = partsTodayAgg.length > 0 ? partsTodayAgg[0].count : 0;
+
+    // Participants Yesterday
+    const partsYestAgg = await GameSession.aggregate([
+      { $match: { status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } } },
+      { $group: { _id: "$userId" } },
+      { $count: "count" }
+    ]);
+    const partsYesterday = partsYestAgg.length > 0 ? partsYestAgg[0].count : 0;
+    
+    const participantGrowth = calculatePercentage(partsToday, partsYesterday);
+
+    // --- 3. Replay Growth ---
+    // Replays = (Total Sessions) - (Unique Participants) for that time period
+    const sessionsToday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfToday } });
+    const replaysToday = Math.max(0, sessionsToday - partsToday);
+
+    const sessionsYesterday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } });
+    const replaysYesterday = Math.max(0, sessionsYesterday - partsYesterday);
+
+    const replayGrowth = calculatePercentage(replaysToday, replaysYesterday);
+
+
+    // ==========================================
+    // RETURN DATA
+    // ==========================================
     return res.status(200).json({
       success: true,
       message: "Analytics data fetched successfully",
@@ -269,10 +271,16 @@ exports.analytics = async (req, res) => {
         totalParticipants: totalParticipants,
         totalReplays: totalReplays,
         mostUsedVehicle: mostUsedVehicle,
+        
+        // --- PERCENTAGE DATA ---
+        registrationGrowth: registrationGrowth, 
+        participantGrowth: participantGrowth,   
+        replayGrowth: replayGrowth,             
+
         weeklyGraphData: weeklyGraphData,
         timingGraphData: timingGraphData,
         mostPlayedVehicles: mostPlayedVehicles,
-        participantsByCountry: participantsByCountry,
+        participantsByCountry: participantsByCountry, // Now 100% dynamic!
       },
     });
   } catch (error) {

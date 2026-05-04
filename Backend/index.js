@@ -1,10 +1,9 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const port = 3000;
 require("dotenv").config();
+const port = process.env.PORT || 8000;
 const connectDB = require("./config/db");
-require("dotenv").config();
 connectDB();
 app.use(cors());
 
@@ -16,10 +15,16 @@ app.use("/api/upload", require("./routes/uploadRoutes"))
 app.use("/api/banner", require("./routes/bannerRoutes"))
 app.use("/api/user", require("./routes/userRoutes"))
 app.use("/api/admin", require("./routes/adminRoutes"))
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+app.get(['/api', '/api/'], (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'kdr-backend' });
+});
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.listen(process.env.PORT || 8000, () => {
+app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

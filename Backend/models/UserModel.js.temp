@@ -29,10 +29,13 @@ const userSchema = new mongoose.Schema({
      phoneNumber: {
       type: String,
     },
+  
     status:{
       type:Boolean,
       default:true
-    },
+    },phoneCode: {
+  type: String, // "+91"
+},
     isEmailVerified: {
   type: Boolean,
   default: false

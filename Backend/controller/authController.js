@@ -138,7 +138,21 @@ const WHITELIST_EMAILS = [
 
 exports.register = async (req, res) => {
   try {
-    const { firstName, lastName, email, country, city, phoneNumber } = req.body;
+    // ✅ 1. Added localPhoneNumber to destructuring
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      country, 
+      city, 
+      phoneNumber, 
+      phoneCode, 
+      local,
+      localPhoneNumber 
+    } = req.body;
+
+    // ✅ 2. Priority check: use localPhoneNumber if it exists, otherwise use standard phoneNumber
+    const finalPhoneNumber = localPhoneNumber || phoneNumber;
 
     // ✅ Validation
     if (!firstName || !email) {
@@ -172,7 +186,9 @@ exports.register = async (req, res) => {
       user.lastName = lastName;
       user.country = country;
       user.city = city;
-      user.phoneNumber = phoneNumber;
+      // ✅ 3. Update using our fallback variable
+      user.phoneNumber = finalPhoneNumber;
+      user.phoneCode = phoneCode;
 
       // 🔥 Optional: reset verification for test users
       if (isWhitelisted) {
@@ -188,8 +204,10 @@ exports.register = async (req, res) => {
         email: normalizedEmail,
         country,
         city,
-        phoneNumber,
+        // ✅ 4. Create using our fallback variable
+        phoneNumber: finalPhoneNumber,
         isEmailVerified: false,
+        phoneCode,
       });
     }
 

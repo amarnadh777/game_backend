@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
   },
+phoneCode: {
+  type: String, // "+91"
+},
 
   // ✅ for admin panel
   role: {

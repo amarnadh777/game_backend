@@ -4,6 +4,33 @@ const OTP = require("../models/otpModel")
 const axios = require("axios")
 const nodemailer = require('nodemailer')
 const sendOtpEmail = require("../helper/sendEMail")
+
+const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+const slugName = (value) =>
+  normalizeName(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+
+const buildSimplePlayerEmail = (firstName, lastName) => {
+  const first = slugName(firstName) || "player";
+  const last = slugName(lastName) || "guest";
+  return `${first}.${last}@simple.kdr-games.local`;
+};
+
+const toSimpleUser = (user) => ({
+  _id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  country: user.country,
+  city: user.city,
+  status: user.status,
+  isEmailVerified: user.isEmailVerified,
+});
+
+const signUserToken = (user) => jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
 // exports.register = async (req, res) => {
 
 //     try {
@@ -227,6 +254,120 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error("Register Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      errorCode: "SERVER_ERROR",
+    });
+  }
+};
+
+exports.simpleRegister = async (req, res) => {
+  try {
+    const firstName = normalizeName(req.body.firstName);
+    const lastName = normalizeName(req.body.lastName);
+    const country = normalizeName(req.body.country);
+    const city = normalizeName(req.body.city);
+
+    if (!firstName || !lastName || !country) {
+      return res.status(400).json({
+        success: false,
+        message: "First name, last name, and country are required",
+        errorCode: "VALIDATION_ERROR",
+      });
+    }
+
+    const email = buildSimplePlayerEmail(firstName, lastName);
+    let user = await User.findOne({ email });
+
+    if (user?.status === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been disabled by the administrator.",
+        errorCode: "ACCOUNT_DISABLED",
+      });
+    }
+
+    if (user) {
+      user.firstName = firstName;
+      user.lastName = lastName;
+      user.country = country;
+      user.city = city;
+      user.isEmailVerified = true;
+      await user.save();
+    } else {
+      user = await User.create({
+        firstName,
+        lastName,
+        email,
+        country,
+        city,
+        isEmailVerified: true,
+      });
+    }
+
+    const token = signUserToken(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Player registered successfully",
+      data: { user: toSimpleUser(user) },
+      token,
+    });
+  } catch (error) {
+    console.error("Simple Register Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      errorCode: "SERVER_ERROR",
+    });
+  }
+};
+
+exports.simpleLogin = async (req, res) => {
+  try {
+    const firstName = normalizeName(req.body.firstName);
+    const lastName = normalizeName(req.body.lastName);
+
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: "First name and last name are required",
+        errorCode: "VALIDATION_ERROR",
+      });
+    }
+
+    const email = buildSimplePlayerEmail(firstName, lastName);
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Player not found. Please register first.",
+        errorCode: "USER_NOT_FOUND",
+      });
+    }
+
+    if (user.status === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been disabled by the administrator.",
+        errorCode: "ACCOUNT_DISABLED",
+      });
+    }
+
+    const token = signUserToken(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Player logged in successfully",
+      data: { user: toSimpleUser(user) },
+      token,
+    });
+  } catch (error) {
+    console.error("Simple Login Error:", error);
 
     return res.status(500).json({
       success: false,

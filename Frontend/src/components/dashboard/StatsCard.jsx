@@ -18,9 +18,13 @@ const StatCard = ({ title, value, trend, icon: Icon }) => {
           {value}
         </p>
         
-        <p className="text-[12px] font-medium text-[#004B8D] truncate">
-          {trend}
-        </p>
+        {trend ? (
+          <p className="text-[12px] font-medium text-[#004B8D] truncate">
+            {trend}
+          </p>
+        ) : (
+          <span className="h-[18px]" aria-hidden="true" />
+        )}
         
       </div>
 

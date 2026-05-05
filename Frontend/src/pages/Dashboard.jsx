@@ -33,9 +33,14 @@ fetchData();
 
 },[])
 
+  const formatCount = (value) => {
+    const numericValue = Number(value ?? 0);
+    return Number.isFinite(numericValue) ? numericValue.toLocaleString() : "0";
+  };
+
   const mostPlayedVehicle = dashboardData?.mostUsedVehicle
     ? dashboardData.mostUsedVehicle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    : "Jetour G700";
+    : "No data";
 
   if (loading) {
     return (
@@ -59,26 +64,22 @@ fetchData();
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           title="Total number of participants"
-          value={dashboardData?.totalParticipants ?? "1400"}
-          trend="10% from yesterday"
+          value={formatCount(dashboardData?.totalParticipants)}
           icon={Users}
         />
         <StatCard 
           title="Total number of registration"
-          value={dashboardData?.totalUsers ?? "1860"}
-          trend="20% from yesterday"
+          value={formatCount(dashboardData?.totalUsers)}
           icon={UserPlus}
         />
         <StatCard 
           title="Game Replay"
-          value={dashboardData?.totalReplays ?? "370"}
-          trend="20% from yesterday"
+          value={formatCount(dashboardData?.totalReplays)}
           icon={PlaySquare}
         />
         <StatCard 
           title="Most Played Vehicle"
           value={mostPlayedVehicle}
-          trend="20% from yesterday"
           icon={CarFront}
         />
       </div>

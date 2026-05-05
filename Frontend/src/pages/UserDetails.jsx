@@ -133,21 +133,20 @@ const UserDetails = () => {
   };
 
   return (
-    // Background exactly matches the Dashboard blue
-    <div className="w-full min-h-screen p-6 md:p-8 bg-[#EBF5FF] flex flex-col gap-4">
+    <div className="w-full min-h-screen p-6 md:p-8 bg-[#F4F8FC] flex flex-col gap-4">
       <ExportModal isOpen={isCalanderModleOpen} onClose={() => {setIsCalanderModelOpen(false)}} />
 
       {/* Main Page Title */}
-      <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-wide mb-2">
+      <h1 className="text-xl md:text-2xl font-bold text-[#101820] tracking-wide mb-2">
         Welcome To Kanoo Daily Rental
       </h1>
 
       {/* White Container Card */}
-      <div className="bg-white rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden border border-white">
+      <div className="bg-white rounded-lg shadow-sm flex flex-col flex-1 overflow-hidden border border-[#D8E2EC]">
         
         {/* Header Section inside the white card */}
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-[18px] font-bold text-gray-900">
+          <h2 className="text-[18px] font-bold text-[#101820]">
             User Details
           </h2>
 
@@ -163,7 +162,7 @@ const UserDetails = () => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1); 
                 }}
-                className="bg-gray-50 border border-gray-200 text-gray-600 text-sm py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 w-48"
+                className="bg-white border border-[#D8E2EC] text-gray-600 text-sm py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[#004B8D] w-48"
               />
             )}
 
@@ -175,7 +174,7 @@ const UserDetails = () => {
                   setSearchQuery(""); 
                   setCurrentPage(1);
                 }}
-                className="appearance-none bg-[#F3F4F6] text-gray-700 text-sm font-medium py-2 px-4 pr-10 rounded-lg outline-none cursor-pointer w-40"
+                className="appearance-none bg-[#EEF4F8] text-gray-700 text-sm font-medium py-2 px-4 pr-10 rounded-lg outline-none cursor-pointer w-40"
               >
                 <option value="" disabled>Filter by list</option>
                 <option value="email">Email</option>
@@ -191,7 +190,7 @@ const UserDetails = () => {
 
             {/* Yellow Download Button */}
             <button 
-              className="bg-gradient-to-r from-[#FDE57E] to-[#F1C82A] text-slate-800 text-sm font-semibold py-2 px-5 rounded-lg transition-transform active:scale-95 flex items-center gap-2" 
+              className="bg-[#FFD100] hover:bg-[#E5BC00] text-[#101820] text-sm font-semibold py-2 px-5 rounded-lg transition-transform active:scale-95 flex items-center gap-2" 
               onClick={() =>{setIsCalanderModelOpen(true)}}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +206,7 @@ const UserDetails = () => {
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               {/* Light gray header background */}
-              <tr className="bg-[#F3F4F6]">
+              <tr className="bg-[#EEF4F8]">
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-16">Rank</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Player</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Email</th>
@@ -286,7 +285,7 @@ const UserDetails = () => {
             <button 
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+              className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
             >
               &lt; Previous
             </button>
@@ -300,7 +299,7 @@ const UserDetails = () => {
                      onClick={() => setCurrentPage(pageNumber)}
                      className={`min-w-[28px] h-[28px] rounded px-2 transition-colors text-[13px] ${
                        currentPage === pageNumber
-                         ? "bg-[#0A3D81] text-white font-medium"
+                         ? "bg-[#004B8D] text-white font-medium"
                          : "text-gray-600 hover:bg-gray-100"
                      }`}
                    >
@@ -316,7 +315,7 @@ const UserDetails = () => {
             <button 
               onClick={handleNextPage}
               disabled={currentPage >= totalPages || totalPages === 0}
-              className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+              className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
             >
               Next &gt;
             </button>
@@ -328,14 +327,14 @@ const UserDetails = () => {
       {/* --- USER DETAILS MODAL --- */}
 {/* --- USER DETAILS MODAL --- */}
       {isModelOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0c5b]/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#004B8D]/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           
           {/* Changed max-w to 1270px to match your design perfectly */}
-          <div className="bg-white border border-[#D8DCDF] rounded-[12px] w-full max-w-[1270px] shadow-2xl overflow-hidden relative flex flex-col">
+          <div className="bg-white border border-[#D8E2EC] rounded-lg w-full max-w-[1270px] shadow-2xl overflow-hidden relative flex flex-col">
             
             {/* Header Section */}
             <div className="relative py-6 px-8 flex justify-center items-center">
-              <h2 className="text-[22px] font-bold text-gray-900 tracking-wide">
+              <h2 className="text-[22px] font-bold text-[#101820] tracking-wide">
                 User Details
               </h2>
               <button onClick={closeModal} className="absolute right-6 text-gray-500 hover:text-gray-800 transition-colors">
@@ -346,21 +345,21 @@ const UserDetails = () => {
             </div>
 
             {/* Top Highlighted Data Ribbon */}
-            <div className="bg-[#F1F4F9] py-5 px-10 md:px-20 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center border-y border-gray-100">
+            <div className="bg-[#EEF4F8] py-5 px-10 md:px-20 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center border-y border-gray-100">
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Rank</span>
-                <span className="text-[14px] font-bold text-[#0A3D81]">#{selectedUser?.rank}</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Rank</span>
+                <span className="text-[14px] font-bold text-[#004B8D]">#{selectedUser?.rank}</span>
               </div>
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Date</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Date</span>
                 <span className="text-[14px] font-medium text-gray-700 whitespace-nowrap">{formatDate(selectedUser?.registerDate)}</span>
               </div>
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Time</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Time</span>
                 <span className="text-[14px] font-medium text-gray-700 whitespace-nowrap">{formatTime(selectedUser?.registerDate)}</span>
               </div>
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Status</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Status</span>
                 <span className={`text-[14px] font-medium ${selectedUser?.status ? 'text-[#00B050]' : 'text-red-600'}`}>
                   {selectedUser?.status ? 'Active' : 'Disabled'}
                 </span>
@@ -372,25 +371,25 @@ const UserDetails = () => {
               
               {/* Left Column (Using Grid to force perfectly straight alignment) */}
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Player</span>
+                <span className="text-[14px] font-bold text-[#101820]">Player</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.player}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Country</span>
+                <span className="text-[14px] font-bold text-[#101820]">Country</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.country}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Speed</span>
+                <span className="text-[14px] font-bold text-[#101820]">Speed</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.speed}</span>
               </div>
 
               {/* Right Column (Using Grid to force perfectly straight alignment) */}
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Email</span>
+                <span className="text-[14px] font-bold text-[#101820]">Email</span>
                 <span className="text-[14px] font-medium text-gray-700 truncate" title={selectedUser?.email}>{selectedUser?.email}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Phone number</span>
+                <span className="text-[14px] font-bold text-[#101820]">Phone number</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.phoneNumber || 'N/A'}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Finished</span>
+                <span className="text-[14px] font-bold text-[#101820]">Finished</span>
                 <span className="text-[14px] font-medium text-gray-700">{formatTimeTaken(selectedUser?.finished)}</span>
               </div>
 
@@ -400,7 +399,7 @@ const UserDetails = () => {
             <div className="pb-8 pt-4 flex justify-center">
               <button 
                 onClick={closeModal}
-                className="border border-[#004785] text-gray-700 hover:bg-gray-50 text-[13px] font-medium py-2 px-10 rounded-[8px] transition-colors active:scale-95"
+                className="border border-[#004B8D] text-gray-700 hover:bg-gray-50 text-[13px] font-medium py-2 px-10 rounded-[8px] transition-colors active:scale-95"
               >
                 Close
               </button>

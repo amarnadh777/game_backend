@@ -22,8 +22,8 @@ function ParticipantsByCoutry({ data }) {
   return (
     <div className="w-full">
       {/* Removed max-w-2xl and blue border so it spans full width naturally */}
-      <div className="bg-white p-6 border border-gray-200 rounded-sm w-full">
-        <h2 className="text-lg font-bold text-gray-900 mb-8">
+      <div className="bg-white p-6 border border-[#D8E2EC] rounded-lg w-full">
+        <h2 className="text-lg font-bold text-[#101820] mb-8">
           Participants By Country
         </h2>
 
@@ -37,31 +37,32 @@ function ParticipantsByCoutry({ data }) {
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false} // Set to false to match cleaner dashboard UI
-                stroke="#e5e7eb"
+                stroke="#D8E2EC"
               />
 
               <XAxis
                 dataKey="country"
-                axisLine={{ stroke: '#9ca3af' }}
+                axisLine={{ stroke: '#A4B1BE' }}
                 tickLine={false}
-                tick={{ fill: '#6b7280', fontSize: 12, dy: 10 }}
+                tick={{ fill: '#596776', fontSize: 12, dy: 10 }}
               />
 
               {/* Removed domain and ticks so it automatically scales up to 480! */}
               <YAxis
-                axisLine={{ stroke: '#9ca3af' }}
+                axisLine={{ stroke: '#A4B1BE' }}
                 tickLine={false}
-                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tick={{ fill: '#596776', fontSize: 12 }}
               />
 
               <Tooltip
-                cursor={{ fill: '#f3f4f6' }}
+                cursor={{ fill: '#F4F8FC' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
 
               <Bar
                 dataKey="participants"
-                fill="#2840B6"
+                fill="#004B8D"
+                isAnimationActive={false}
                 barSize={40}
                 radius={[2, 2, 0, 0]}
               />

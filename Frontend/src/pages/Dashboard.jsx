@@ -20,8 +20,7 @@ const fetchData = async() => {
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/analytics`);
     if(response.status === 200){
-      console.log(response.data); 
-      setDashboardData(response.data.data);
+      setDashboardData(response.data?.data ?? null);
     }
   } catch (error) {
     console.error("API Connection Error:", error);
@@ -34,20 +33,23 @@ fetchData();
 
 },[])
 
+  const mostPlayedVehicle = dashboardData?.mostUsedVehicle
+    ? dashboardData.mostUsedVehicle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    : "Jetour G700";
+
   if (loading) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center bg-[#EBF5FF]">
-        <div className="w-12 h-12 border-4 border-[#2840B6] border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-full min-h-screen flex items-center justify-center bg-[#F4F8FC]">
+        <div className="w-12 h-12 border-4 border-[#004B8D] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    // Replaced bg-gray-50 with your exact background color: bg-[#EBF5FF]
-    <div className="w-full p md:p-8 bg-[#EBF5FF] min-h-screen flex flex-col gap-6">
+    <div className="w-full p-6 md:p-8 bg-[#F4F8FC] min-h-screen flex flex-col gap-6">
       
       {/* Page Title added from your screenshot */}
-      <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-wide mb-2">
+      <h1 className="text-xl md:text-2xl font-bold text-[#101820] tracking-wide mb-2">
         Welcome To Kanoo Daily Rental
       </h1>
 
@@ -57,25 +59,25 @@ fetchData();
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           title="Total number of participants"
-          value={dashboardData !== null ? dashboardData.totalParticipants : "1400"}
+          value={dashboardData?.totalParticipants ?? "1400"}
           trend="10% from yesterday"
           icon={Users}
         />
         <StatCard 
           title="Total number of registration"
-          value={dashboardData !== null ? dashboardData.totalUsers : "1860"}
+          value={dashboardData?.totalUsers ?? "1860"}
           trend="20% from yesterday"
           icon={UserPlus}
         />
         <StatCard 
           title="Game Replay"
-          value={dashboardData !== null ? dashboardData.totalReplays : "370"}
+          value={dashboardData?.totalReplays ?? "370"}
           trend="20% from yesterday"
           icon={PlaySquare}
         />
         <StatCard 
           title="Most Played Vehicle"
-          value={dashboardData !== null ? dashboardData.mostUsedVehicle.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : "Jetour G700"}
+          value={mostPlayedVehicle}
           trend="20% from yesterday"
           icon={CarFront}
         />

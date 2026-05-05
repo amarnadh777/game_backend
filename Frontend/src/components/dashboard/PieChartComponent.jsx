@@ -16,12 +16,11 @@ const MostPlayedVehiclesChart = ({ data }) => {
     { name: 'Land Cruiser 300', value: 15 },
   ];
 
-  // The extended grayscale colors from your mockup, added extra colors to support more items
-  const COLORS = ['#28B67A', '#F3C300', '#0A3D81', '#E74C3C', '#9B59B6', '#1ABC9C', '#34495E']; 
+  const COLORS = ['#004B8D', '#FFD100', '#101820', '#28B67A', '#E05A47', '#7A8794', '#71B7D5']; 
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm w-full h-full flex flex-col">
-      <h2 className="text-[15px] font-bold text-gray-800 mb-6">
+    <div className="bg-white p-6 rounded-lg border border-[#D8E2EC] shadow-sm w-full h-full flex flex-col">
+      <h2 className="text-[15px] font-bold text-[#101820] mb-6">
         Most Played Vehicles
       </h2>
       
@@ -36,6 +35,7 @@ const MostPlayedVehiclesChart = ({ data }) => {
               outerRadius={90} // Size of the pie
               innerRadius={0} // Keep at 0 for a solid pie chart (increase it if you want a Donut chart)
               dataKey="value"
+              isAnimationActive={false}
               stroke="#ffffff" // Adds a nice thin white line between slices
               strokeWidth={2}
             >

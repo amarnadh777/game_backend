@@ -11,8 +11,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.1039.0",
+    "@aws-sdk/credential-providers": "^3.1041.0",
     "axios": "^1.13.6",
+
     "bcrypt": "^6.0.0",
+
+    "aws4": "^1.13.2",
+
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "exceljs": "^4.4.0",

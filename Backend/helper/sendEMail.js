@@ -1,21 +1,13 @@
-  const axios = require("axios");
+const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
 
-  const sendOtpEmail = async (email, otp, firstName) => {
-    await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        sender: {
-          name: "Kanoo Daily Rental Game",
+const ses = new SESClient({ region: "eu-west-1" });
 
-          email: "kanooscargame@gmail.com" // must be verified in Brevo
-        },
-        to: [{ email }],
-        subject: "Your OTP Code",
-htmlContent: `
+const sendOtpEmail = async (email, otp, firstName) => {
+  const html = `
 <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:20px;">
-  
+
   <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-    
+
     <!-- Header -->
     <div style="background:linear-gradient(90deg,#ff7a00,#ff3c00); padding:25px; text-align:center; color:white;">
       <h1 style="margin:0; font-size:24px;"> Kanoo Rental Game</h1>
@@ -50,12 +42,11 @@ htmlContent: `
       </div>
 
       <p style="font-size:14px; color:#666; margin-top:20px;">
-        Enter this code in the app to continue 
+        Enter this code in the app to continue
       </p>
 
       <p style="font-size:13px; color:#999; margin-top:15px;">
-        If you didn’t request this, you can safely ignore this em
-        ail.
+        If you didn't request this, you can safely ignore this email.
       </p>
     </div>
 
@@ -68,15 +59,18 @@ htmlContent: `
   </div>
 
 </div>
-`
-      },
-      {
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-  };
+`;
 
-  module.exports = sendOtpEmail;
+  await ses.send(
+    new SendEmailCommand({
+      Source: "noreply@game.kdrbahrain.com",
+      Destination: { ToAddresses: [email] },
+      Message: {
+        Subject: { Data: "Your OTP Code" },
+        Body: { Html: { Data: html } },
+      },
+    })
+  );
+};
+
+module.exports = sendOtpEmail;

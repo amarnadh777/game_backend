@@ -368,15 +368,24 @@ exports.restGame = async (req, res) => {
 
 exports.getGameLeaderBord = async (req, res) => {
   try {
-    let { page = 1, limit = 10, filterBy, searchQuery } = req.query;
+    let { 
+      page = 1, 
+      limit = 10, 
+      filterBy, 
+      searchQuery, 
+      startDate, 
+      endDate,
+      sortBy,
+      sortOrder
+    } = req.query;
 
-    // Prevent crashes for invalid page/limit inputs
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.max(1, parseInt(limit) || 10);
     const skip = (page - 1) * limit;
 
-    // 1. Setup the search match stage for Users
+    // Match stage
     let matchStage = {};
+    
     if (filterBy && searchQuery) {
       if (filterBy === "email") {
         matchStage.email = { $regex: searchQuery, $options: "i" };
@@ -390,40 +399,78 @@ exports.getGameLeaderBord = async (req, res) => {
       }
     }
 
-    // 2. Build the Aggregation Pipeline
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      matchStage.createdAt = {
+        $gte: start,
+        $lte: end
+      };
+    }
+
+    // Dynamic sorting
+    let sortStage = {};
+
+    if (sortBy === 'speed') {
+      const order = sortOrder === 'asc' ? 1 : -1;
+      sortStage = { 
+        "sessionData.highestSpeed": order,
+        "sessionData.timeTaken": 1
+      };
+    } 
+    else if (sortBy === 'finished') {
+      const order = sortOrder === 'asc' ? 1 : -1;
+      sortStage = { 
+        "sessionData.timeTaken": order,
+        "sessionData.highestSpeed": -1
+      };
+    } 
+    else {
+      sortStage = {
+   
+        "sessionData.timeTaken": 1,
+        createdAt: -1 
+      };
+    }
+
+    // Pipeline
     const pipeline = [
-      { $match: matchStage }, // Filter users based on search
+      { $match: matchStage }, 
       {
-        // Join with GameSession collection
         $lookup: {
-          from: "gamesessions", // MongoDB automatically pluralizes mongoose models to lowercase
+          from: "gamesessions", 
           localField: "_id",
           foreignField: "userId",
           pipeline: [
-            { $match: { status: "COMPLETED" } }, // Only get completed sessions
-            { $sort: { highestSpeed: -1, timeTaken: 1 } }, // Best score first
-            { $limit: 1 } // Only grab the user's best session if they played multiple times
+            { $match: { status: "COMPLETED" } }, 
+            { $sort: { highestSpeed: -1, timeTaken: 1 } }, 
+            { $limit: 1 } 
           ],
           as: "sessionData"
         }
       },
       {
-        // Flatten the array from $lookup, but KEEP users who have no session
         $unwind: {
           path: "$sessionData",
           preserveNullAndEmptyArrays: true 
         }
       },
+      // Push users with no session to the bottom
       {
-        // Sort: Top players first, then non-players sorted by newest accounts
-        $sort: {
-          "sessionData.highestSpeed": -1,
-          "sessionData.timeTaken": 1,
-          createdAt: -1
+        $addFields: {
+          hasPlayed: { 
+            $cond: [{ $ifNull: ["$sessionData", false] }, 1, 0] 
+          }
         }
       },
       {
-        // Facet allows us to get the total count AND the paginated data in one database call
+        $sort: { 
+          hasPlayed: -1,
+          ...sortStage 
+        }
+      },
+      {
         $facet: {
           metadata: [{ $count: "total" }],
           data: [{ $skip: skip }, { $limit: limit }]
@@ -433,29 +480,23 @@ exports.getGameLeaderBord = async (req, res) => {
 
     const result = await User.aggregate(pipeline);
 
-    // Extract total count and data safely
-    const data = result[0].data;
+    const data = result[0].data || [];
     const total = result[0].metadata[0]?.total || 0;
 
-    // 3. Map the data for the frontend
     const leaderboard = data.map((user, index) => {
-      // Check if they actually have a completed game session
       const hasPlayed = !!user.sessionData;
 
       return {
-        // If they played, calculate rank. If not, output "-" or "N/A"
-        rank: hasPlayed ? skip + index + 1 : "-", 
-        
-        id: user._id, // Renamed to id to match your React frontend expected prop
+        rank: hasPlayed ? skip + index + 1 : "-",
+        id: user._id, 
         firstName: user.firstName,
         lastName: user.lastName || "",
         email: user.email,
         country: user.country || "N/A",
         status: user.status,
         phoneNumber: user.phoneNumber || "N/A",
-          registerDate: user.createdAt || "N/A",
-        
-        // Game stats fallback to "N/A" if they never participated
+        registerDate: user.createdAt || "N/A",
+        phoneCode: user.phoneCode || "",
         highestSpeed: hasPlayed ? user.sessionData.highestSpeed : "N/A",
         timeTaken: hasPlayed ? user.sessionData.timeTaken : "N/A",
         completedAt: hasPlayed ? user.sessionData.completedAt : null,
@@ -472,6 +513,7 @@ exports.getGameLeaderBord = async (req, res) => {
         totalPages: Math.ceil(total / limit) || 1,
       },
     });
+
   } catch (error) {
     console.error("Leaderboard Aggregation Error:", error);
     res.status(500).json({

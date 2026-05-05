@@ -11,6 +11,7 @@ import UserDetails from './pages/UserDetails';
 import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute'; // Import the new component
 import { Toaster } from 'react-hot-toast';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -33,9 +34,11 @@ function App() {
               <Route path="banners" element={<DashboardBanner />} />
               <Route path="users" element={<UserDetails />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="profile" element={<Profile />} />
+
             </Route>
 
-          </Route>
+           </Route>
 
         </Routes>
       </BrowserRouter>

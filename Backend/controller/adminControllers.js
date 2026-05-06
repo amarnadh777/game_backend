@@ -3,101 +3,303 @@ const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/adminModel");
-
+const getDateRange = require("../utils/utils");
+const crypto = require('crypto');
 exports.analytics = async (req, res) => {
   try {
-    // Calculate the date for 7 days ago
+    // Dates for "Today vs Yesterday" growth calculations
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+    // Date for weekly graph (Always last 7 days for the main dashboard overview)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     // ==========================================
-    // DATE DEFINITIONS FOR "YESTERDAY" VS "TODAY"
+    // 1. RUN QUERIES IN PARALLEL (ALL-TIME DATA)
     // ==========================================
-    const now = new Date();
-    // Start of Today (Midnight)
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    // Start of Yesterday (Midnight yesterday)
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const [
+      CountUser,
+      currentParticipantsData,
+      replaydata,
+      mostUsedVehicleData,
+      dailyParticipantsData,
+      hourlyParticipantsData,
+      vehicleCounts,
+      countryCounts
+    ] = await Promise.all([
+      // 1. Total Lifetime Users
+      User.countDocuments(),
 
-    const weeklyGraphData = [
-      { day: "Mon", participants: 0 },
-      { day: "Tue", participants: 0 },
-      { day: "Wed", participants: 0 },
-      { day: "Thu", participants: 0 },
-      { day: "Fri", participants: 0 },
-      { day: "Sat", participants: 0 },
-      { day: "Sun", participants: 0 },
-    ];
+      // 2. Total Unique Participants (ALL-TIME)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED" } },
+        { $group: { _id: "$userId" } },
+        { $count: "total_participants" },
+      ]),
 
-    // Aggregate participants by day of the week
-    const dailyParticipantsData = await GameSession.aggregate([
-      {
-        $match: {
-          status: "COMPLETED",
-          completedAt: { $gte: sevenDaysAgo },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            dayOfWeek: { $dayOfWeek: "$completedAt" }, 
-            userId: "$userId",
+      // 3. Replay Data (ALL-TIME)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED" } },
+        { $group: { _id: "$userId", totalPlays: { $sum: 1 } } },
+        { $match: { totalPlays: { $gt: 1 } } },
+        { $project: { replays: { $subtract: ["$totalPlays", 1] } } },
+      ]),
+
+      // 4. Most Used Vehicle (ALL-TIME)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED", vehicle: { $exists: true, $ne: null } } },
+        { $group: { _id: "$vehicle", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+
+      // 5. Weekly Graph Data (Hardcoded to last 7 days)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED", completedAt: { $gte: sevenDaysAgo } } },
+        { $group: { _id: { dayOfWeek: { $dayOfWeek: "$completedAt" }, userId: "$userId" } } },
+        { $group: { _id: "$_id.dayOfWeek", participantsCount: { $sum: 1 } } },
+      ]),
+
+      // 6. Hourly Graph Data (ALL-TIME)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED" } },
+        { $group: { _id: { $hour: "$completedAt" }, participantsCount: { $sum: 1 } } },
+      ]),
+
+      // 7. Specific Vehicle Counts (ALL-TIME)
+      GameSession.aggregate([
+        {
+          $match: {
+            status: "COMPLETED",
+            vehicle: { $in: ["toyota_land_cruiser_gx_r_3_5l", "lexus_lx_600_urban", "icaur_v27_royal", "deepal_g318", "jetour_g700"] },
           },
         },
-      },
-      {
-        $group: {
-          _id: "$_id.dayOfWeek",
-          participantsCount: { $sum: 1 },
-        },
-      },
+        { $group: { _id: "$vehicle", count: { $sum: 1 } } },
+      ]),
+
+      // 8. Country Counts (ALL-TIME)
+      GameSession.aggregate([
+        { $match: { status: "COMPLETED" } },
+        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+        { $unwind: "$user" },
+        { $match: { "user.country": { $exists: true, $ne: null, $ne: "" } } },
+        { $group: { _id: { userId: "$userId", country: "$user.country" } } },
+        { $group: { _id: "$_id.country", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ])
     ]);
 
+    // ==========================================
+    // 2. PROCESS RESULTS
+    // ==========================================
+    const weeklyGraphData = [
+      { day: "Mon", participants: 0 }, { day: "Tue", participants: 0 }, { day: "Wed", participants: 0 },
+      { day: "Thu", participants: 0 }, { day: "Fri", participants: 0 }, { day: "Sat", participants: 0 }, { day: "Sun", participants: 0 },
+    ];
     dailyParticipantsData.forEach((data) => {
-      const mongoDay = data._id; 
+      const mongoDay = data._id;
       const arrayIndex = mongoDay === 1 ? 6 : mongoDay - 2;
       weeklyGraphData[arrayIndex].participants = data.participantsCount;
     });
 
-    // 1. Total Registered Users
-    const CountUser = await User.countDocuments();
+    const timingGraphData = [
+      { time: "8am", participants: 0 }, { time: "10am", participants: 0 }, { time: "12pm", participants: 0 },
+      { time: "2pm", participants: 0 }, { time: "4pm", participants: 0 }, { time: "6pm", participants: 0 }, { time: "8pm", participants: 0 },
+    ];
+    hourlyParticipantsData.forEach((data) => {
+      const hour = data._id;
+      const count = data.participantsCount;
+      if (hour >= 8 && hour < 10) timingGraphData[0].participants += count;
+      else if (hour >= 10 && hour < 12) timingGraphData[1].participants += count;
+      else if (hour >= 12 && hour < 14) timingGraphData[2].participants += count;
+      else if (hour >= 14 && hour < 16) timingGraphData[3].participants += count;
+      else if (hour >= 16 && hour < 18) timingGraphData[4].participants += count;
+      else if (hour >= 18 && hour < 20) timingGraphData[5].participants += count;
+      else if (hour >= 20 && hour < 22) timingGraphData[6].participants += count;
+    });
 
-    // 2. Total Unique Participants (Completed at least one game)
-    const currentParticipantsData = await GameSession.aggregate([
-      { $match: { status: "COMPLETED" } },
-      { $group: { _id: "$userId" } },
-      { $count: "total_participants" },
+    const mostPlayedVehicles = [
+      { name: "toyota_land_cruiser_gx_r_3_5l", count: 0 }, { name: "lexus_lx_600_urban", count: 0 },
+      { name: "icaur_v27_royal", count: 0 }, { name: "deepal_g318", count: 0 }, { name: "jetour_g700", count: 0 },
+    ];
+    vehicleCounts.forEach((item) => {
+      const vehicle = mostPlayedVehicles.find((v) => v.name === item._id);
+      if (vehicle) vehicle.count = item.count;
+    });
+
+    const participantsByCountry = countryCounts.map((item) => ({ country: item._id, count: item.count }));
+    const totalParticipants = currentParticipantsData.length > 0 ? currentParticipantsData[0].total_participants : 0;
+    const totalReplays = replaydata.reduce((acc, curr) => acc + curr.replays, 0);
+    const mostUsedVehicle = mostUsedVehicleData.length > 0 ? mostUsedVehicleData[0]._id : null;
+
+    // ==========================================
+    // 3. GROWTH CALCULATIONS (Today vs Yesterday)
+    // ==========================================
+    const calculatePercentage = (today, yesterday) => {
+      if (yesterday === 0) return today > 0 ? 100 : 0;
+      return Number((((today - yesterday) / yesterday) * 100).toFixed(1));
+    };
+
+    const usersToday = await User.countDocuments({ createdAt: { $gte: startOfToday } });
+    const usersYesterday = await User.countDocuments({ createdAt: { $gte: startOfYesterday, $lt: startOfToday } });
+    const registrationGrowth = calculatePercentage(usersToday, usersYesterday);
+
+    const partsTodayAgg = await GameSession.aggregate([
+      { $match: { status: "COMPLETED", completedAt: { $gte: startOfToday } } },
+      { $group: { _id: "$userId" } }, { $count: "count" }
     ]);
+    const partsToday = partsTodayAgg.length > 0 ? partsTodayAgg[0].count : 0;
 
-    // 3. Replay Data (Users who played more than once)
-    const replaydata = await GameSession.aggregate([
-      { $match: { status: "COMPLETED" } },
-      { $group: { _id: "$userId", totalPlays: { $sum: 1 } } },
-      { $match: { totalPlays: { $gt: 1 } } },
-      { $project: { replays: { $subtract: ["$totalPlays", 1] } } },
+    const partsYestAgg = await GameSession.aggregate([
+      { $match: { status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } } },
+      { $group: { _id: "$userId" } }, { $count: "count" }
     ]);
+    const partsYesterday = partsYestAgg.length > 0 ? partsYestAgg[0].count : 0;
 
-    // 4. Most Used Vehicle
-    const mostUsedVehicleData = await GameSession.aggregate([
-      {
-        $match: { status: "COMPLETED", vehicle: { $exists: true, $ne: null } },
+    const participantGrowth = calculatePercentage(partsToday, partsYesterday);
+
+    const sessionsToday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfToday } });
+    const replaysToday = Math.max(0, sessionsToday - partsToday);
+
+    const sessionsYesterday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } });
+    const replaysYesterday = Math.max(0, sessionsYesterday - partsYesterday);
+
+    const replayGrowth = calculatePercentage(replaysToday, replaysYesterday);
+
+    // ==========================================
+    // RETURN DATA
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      message: "Analytics data fetched successfully",
+      data: {
+        totalUsers: CountUser,
+        totalParticipants,
+        totalReplays,
+        mostUsedVehicle,
+        registrationGrowth,
+        participantGrowth,
+        replayGrowth,
+        weeklyGraphData,
+        timingGraphData,
+        mostPlayedVehicles,
+        participantsByCountry,
       },
-      { $group: { _id: "$vehicle", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 1 },
-    ]);
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
-    const hourlyParticipantsData = await GameSession.aggregate([
-      { $match: { status: "COMPLETED" } },
+
+exports.getParticipantsGraphData = async (req, res) => {
+  try {
+    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+    const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
+
+    // 1. Get raw data from MongoDB grouped by exact Date (YYYY-MM-DD)
+    const dailyData = await GameSession.aggregate([
+      {
+        $match: {
+          status: "COMPLETED",
+          completedAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      // Group by user AND formatted date to get UNIQUE users per day
       {
         $group: {
-          _id: { $hour: "$completedAt" }, 
+          _id: {
+            dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
+            userId: "$userId"
+          }
+        }
+      },
+      // Group again to count the unique users per day
+      {
+        $group: {
+          _id: "$_id.dateStr",
+          participantsCount: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // 2. Generate a continuous array of dates between start and end
+    // This ensures days with 0 participants still show up on the graph!
+    const chartData = [];
+    const currentDate = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (currentDate <= end) {
+      // Format current date to YYYY-MM-DD to match MongoDB output
+      const dateString = currentDate.toISOString().split('T')[0];
+
+      // Find if we have data for this day from DB
+      const dbRecord = dailyData.find((d) => d._id === dateString);
+
+      // Create a nice label for the frontend graph
+      // If looking at a week, show "Mon". If longer, show "Oct 12"
+      const isWeekFilter = filter === 'this_week' || filter === 'last_week';
+      const label = isWeekFilter
+        ? currentDate.toLocaleDateString('en-US', { weekday: 'short' }) // "Mon"
+        : currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // "Oct 12"
+
+      chartData.push({
+        day: label, // This matches what Recharts expects on the frontend
+        participants: dbRecord ? dbRecord.participantsCount : 0
+      });
+
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: chartData
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+exports.getTimingGraphData = async (req, res) => {
+  try {
+    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+
+    // Use the same helper function we created earlier
+    const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
+
+    // Create the base match object with the date filter
+    const baseMatch = { status: "COMPLETED" };
+    if (startDate && endDate) {
+      baseMatch.completedAt = { $gte: startDate, $lte: endDate };
+    }
+
+    // 1. Fetch the raw data grouped by hour
+    const hourlyParticipantsData = await GameSession.aggregate([
+      { $match: baseMatch },
+      {
+        $group: {
+          _id: { $hour: "$completedAt" },
           participantsCount: { $sum: 1 },
         },
       },
     ]);
 
+    // 2. Initialize your timing buckets to 0
     const timingGraphData = [
       { time: "8am", participants: 0 },
       { time: "10am", participants: 0 },
@@ -108,8 +310,9 @@ exports.analytics = async (req, res) => {
       { time: "8pm", participants: 0 },
     ];
 
+    // 3. Populate the buckets with the database results
     hourlyParticipantsData.forEach((data) => {
-      const hour = data._id; 
+      const hour = data._id;
       const count = data.participantsCount;
 
       if (hour >= 8 && hour < 10) timingGraphData[0].participants += count;
@@ -121,10 +324,42 @@ exports.analytics = async (req, res) => {
       else if (hour >= 20 && hour < 22) timingGraphData[6].participants += count;
     });
 
+    return res.status(200).json({
+      success: true,
+      data: timingGraphData,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+exports.getVehicleGraphData = async (req, res) => {
+  try {
+    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+
+    // 1. Create the base match object FIRST
+    const baseMatch = { status: "COMPLETED" };
+
+    // 2. ONLY apply the date filter if a filter is actually requested
+    // We also added a check so you can explicitly pass ?filter=all_time if you want
+    if (filter && filter !== "all_time") {
+      const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
+      if (startDate && endDate) {
+        baseMatch.completedAt = { $gte: startDate, $lte: endDate };
+      }
+    }
+
+    // 3. Fetch the vehicle counts from the database
     const vehicleCounts = await GameSession.aggregate([
       {
         $match: {
-          status: "COMPLETED",
+          ...baseMatch,
+          // Only look for these specific vehicles
           vehicle: {
             $in: [
               "toyota_land_cruiser_gx_r_3_5l",
@@ -144,6 +379,7 @@ exports.analytics = async (req, res) => {
       },
     ]);
 
+    // 4. Initialize your baseline data structure
     const mostPlayedVehicles = [
       { name: "toyota_land_cruiser_gx_r_3_5l", count: 0 },
       { name: "lexus_lx_600_urban", count: 0 },
@@ -152,139 +388,19 @@ exports.analytics = async (req, res) => {
       { name: "jetour_g700", count: 0 },
     ];
 
+    // 5. Map the database results to your baseline structure
     vehicleCounts.forEach((item) => {
       const vehicle = mostPlayedVehicles.find((v) => v.name === item._id);
       if (vehicle) vehicle.count = item.count;
     });
 
-    // ==========================================
-    // DYNAMIC COUNTRY LIST
-    // ==========================================
-   // ==========================================
-    // DYNAMIC COUNTRY LIST (FIXED FOR UNIQUE USERS)
-    // ==========================================
-    const countryCounts = await GameSession.aggregate([
-      { $match: { status: "COMPLETED" } },
-      {
-        $lookup: {
-          from: "users", 
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: "$user" },
-      {
-        // Check that country actually exists and isn't empty
-        $match: {
-          "user.country": { $exists: true, $ne: null, $ne: "" }
-        }
-      },
-      {
-        // Step 1: Group by User AND Country first to filter out duplicates. 
-        // If one user played 100 times, this reduces them down to 1 record.
-        $group: {
-          _id: { 
-            userId: "$userId", 
-            country: "$user.country" 
-          }
-        }
-      },
-      {
-        // Step 2: Now group strictly by the country and count those unique users!
-        $group: {
-          _id: "$_id.country",
-          count: { $sum: 1 },
-        },
-      },
-      {
-        // Sort highest counts to the top
-        $sort: { count: -1 } 
-      }
-    ]);
-
-    // Map the database results dynamically to the frontend format
-    const participantsByCountry = countryCounts.map((item) => ({
-      country: item._id,
-      count: item.count
-    }));
-
-    const totalParticipants = currentParticipantsData.length > 0 ? currentParticipantsData[0].total_participants : 0;
-    const totalReplays = replaydata.reduce((acc, curr) => acc + curr.replays, 0);
-    const mostUsedVehicle = mostUsedVehicleData.length > 0 ? mostUsedVehicleData[0]._id : null;
-
-
-    // ==========================================
-    // GROWTH CALCULATIONS (Today vs Yesterday)
-    // ==========================================
-
-    // Helper function to calculate percentage
-    const calculatePercentage = (today, yesterday) => {
-      if (yesterday === 0) return today > 0 ? 100 : 0; // If 0 yesterday but >0 today, that's 100% growth
-      const percentage = ((today - yesterday) / yesterday) * 100;
-      return Number(percentage.toFixed(1)); // Rounds to 1 decimal place (e.g., 10.5)
-    };
-
-    // --- 1. Registration Growth ---
-    const usersToday = await User.countDocuments({ createdAt: { $gte: startOfToday } });
-    const usersYesterday = await User.countDocuments({ createdAt: { $gte: startOfYesterday, $lt: startOfToday } });
-    const registrationGrowth = calculatePercentage(usersToday, usersYesterday);
-
-    // --- 2. Participant Growth ---
-    // Participants Today
-    const partsTodayAgg = await GameSession.aggregate([
-      { $match: { status: "COMPLETED", completedAt: { $gte: startOfToday } } },
-      { $group: { _id: "$userId" } },
-      { $count: "count" }
-    ]);
-    const partsToday = partsTodayAgg.length > 0 ? partsTodayAgg[0].count : 0;
-
-    // Participants Yesterday
-    const partsYestAgg = await GameSession.aggregate([
-      { $match: { status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } } },
-      { $group: { _id: "$userId" } },
-      { $count: "count" }
-    ]);
-    const partsYesterday = partsYestAgg.length > 0 ? partsYestAgg[0].count : 0;
-    
-    const participantGrowth = calculatePercentage(partsToday, partsYesterday);
-
-    // --- 3. Replay Growth ---
-    // Replays = (Total Sessions) - (Unique Participants) for that time period
-    const sessionsToday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfToday } });
-    const replaysToday = Math.max(0, sessionsToday - partsToday);
-
-    const sessionsYesterday = await GameSession.countDocuments({ status: "COMPLETED", completedAt: { $gte: startOfYesterday, $lt: startOfToday } });
-    const replaysYesterday = Math.max(0, sessionsYesterday - partsYesterday);
-
-    const replayGrowth = calculatePercentage(replaysToday, replaysYesterday);
-
-
-    // ==========================================
-    // RETURN DATA
-    // ==========================================
+    // 6. Return the data to the frontend
     return res.status(200).json({
       success: true,
-      message: "Analytics data fetched successfully",
-      data: {
-        totalUsers: CountUser,
-        totalParticipants: totalParticipants,
-        totalReplays: totalReplays,
-        mostUsedVehicle: mostUsedVehicle,
-        
-        // --- PERCENTAGE DATA ---
-        registrationGrowth: registrationGrowth, 
-        participantGrowth: participantGrowth,   
-        replayGrowth: replayGrowth,             
-
-        weeklyGraphData: weeklyGraphData,
-        timingGraphData: timingGraphData,
-        mostPlayedVehicles: mostPlayedVehicles,
-        participantsByCountry: participantsByCountry, // Now 100% dynamic!
-      },
+      data: mostPlayedVehicles,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -292,6 +408,74 @@ exports.analytics = async (req, res) => {
   }
 };
 
+
+exports.getCountryGraphData = async (req, res) => {
+  try {
+    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+
+    // 1. Initialize the base match object
+    const baseMatch = { status: "COMPLETED" };
+
+    // 2. Only apply date filtering if a valid filter is provided
+    if (filter && filter !== "all_time") {
+      const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
+      if (startDate && endDate) {
+        baseMatch.completedAt = { $gte: startDate, $lte: endDate };
+      }
+    }
+
+    // 3. Aggregate data joining Sessions with Users
+    const countryCounts = await GameSession.aggregate([
+      { $match: baseMatch },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $match: {
+          "user.country": { $exists: true, $ne: null, $ne: "" }
+        }
+      },
+      {
+        // Count unique participants per country
+        $group: {
+          _id: {
+            userId: "$userId",
+            country: "$user.country"
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.country",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const participantsByCountry = countryCounts.map((item) => ({
+      country: item._id,
+      count: item.count
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: participantsByCountry,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 exports.creatAdmin = async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -323,7 +507,7 @@ exports.creatAdmin = async (req, res) => {
     // 4. Create the new admin with the HASHED password
     const newAdmin = new Admin({
       email: email,
-      password: hashedPassword, 
+      password: hashedPassword,
       userName: username,
     });
 
@@ -346,7 +530,8 @@ exports.creatAdmin = async (req, res) => {
       success: false,
       message: "Internal server error",
     });
-  }}
+  }
+}
 exports.loginAdmin = async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -398,12 +583,352 @@ exports.loginAdmin = async (req, res) => {
         id: admin._id,
         email: admin.email,
         userName: admin.userName,
+        fullname: admin.fullname,
       },
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const { timeframe } = req.query; // 'yesterday', '7days', or '30days'
+    const { currentStart, currentEnd, prevStart, prevEnd } = getStatRanges(timeframe);
+
+    const calculateGrowth = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Number((((current - previous) / previous) * 100).toFixed(1));
+    };
+
+    // Example: User Registrations
+    const [currentUsers, prevUsers] = await Promise.all([
+      User.countDocuments({ createdAt: { $gte: currentStart, $lte: currentEnd } }),
+      User.countDocuments({ createdAt: { $gte: prevStart, $lte: prevEnd } })
+    ]);
+
+    // Example: Unique Participants (Aggregate)
+    const getParts = async (start, end) => {
+      const agg = await GameSession.aggregate([
+        { $match: { status: "COMPLETED", completedAt: { $gte: start, $lte: end } } },
+        { $group: { _id: "$userId" } },
+        { $count: "count" }
+      ]);
+      return agg.length > 0 ? agg[0].count : 0;
+    };
+
+    const [currentParts, prevParts] = await Promise.all([
+      getParts(currentStart, currentEnd),
+      getParts(prevStart, prevEnd)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users: {
+          value: currentUsers,
+          trend: calculateGrowth(currentUsers, prevUsers)
+        },
+        participants: {
+          value: currentParts,
+          trend: calculateGrowth(currentParts, prevParts)
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getStatTrend = async (req, res) => {
+  try {
+    const { statType, timeframe } = req.query; // 'participants', 'users', 'replays'
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    let currentStart, currentEnd, prevStart, prevEnd;
+
+    // ==========================================
+    // 1. CALCULATE DATE RANGES (Current vs Previous)
+    // ==========================================
+    if (timeframe === '7days') {
+      currentStart = new Date(startOfToday);
+      currentStart.setDate(currentStart.getDate() - 7);
+      currentEnd = now;
+
+      prevStart = new Date(currentStart);
+      prevStart.setDate(prevStart.getDate() - 7);
+      prevEnd = currentStart;
+    } else if (timeframe === '30days') {
+      currentStart = new Date(startOfToday);
+      currentStart.setDate(currentStart.getDate() - 30);
+      currentEnd = now;
+
+      prevStart = new Date(currentStart);
+      prevStart.setDate(prevStart.getDate() - 30);
+      prevEnd = currentStart;
+    } else {
+      // Default: "Yesterday" dropdown option means comparing Today vs Yesterday
+      currentStart = startOfToday;
+      currentEnd = now;
+
+      prevStart = new Date(startOfToday);
+      prevStart.setDate(prevStart.getDate() - 1);
+      prevEnd = startOfToday;
+    }
+
+    // ==========================================
+    // 2. FETCH DATA MATCHING MAIN ANALYTICS LOGIC
+    // ==========================================
+    let currentCount = 0;
+    let prevCount = 0;
+
+    if (statType === 'users') {
+      [currentCount, prevCount] = await Promise.all([
+        User.countDocuments({ createdAt: { $gte: currentStart, $lt: currentEnd } }),
+        User.countDocuments({ createdAt: { $gte: prevStart, $lt: prevEnd } })
+      ]);
+    }
+    else if (statType === 'participants') {
+      const getParticipantsCount = async (start, end) => {
+        const query = { status: "COMPLETED", completedAt: { $gte: start, $lt: end } };
+        const agg = await GameSession.aggregate([
+          { $match: query },
+          { $group: { _id: "$userId" } },
+          { $count: "count" }
+        ]);
+        return agg.length > 0 ? agg[0].count : 0;
+      };
+
+      [currentCount, prevCount] = await Promise.all([
+        getParticipantsCount(currentStart, currentEnd),
+        getParticipantsCount(prevStart, prevEnd)
+      ]);
+    }
+    else if (statType === 'replays') {
+      const getReplaysCount = async (start, end) => {
+        const query = { status: "COMPLETED", completedAt: { $gte: start, $lt: end } };
+
+        // Match exact logic: Replays = Total Sessions - Unique Participants
+        const totalSessions = await GameSession.countDocuments(query);
+
+        const partsAgg = await GameSession.aggregate([
+          { $match: query },
+          { $group: { _id: "$userId" } },
+          { $count: "count" }
+        ]);
+        const uniqueParticipants = partsAgg.length > 0 ? partsAgg[0].count : 0;
+
+        return Math.max(0, totalSessions - uniqueParticipants);
+      };
+
+      [currentCount, prevCount] = await Promise.all([
+        getReplaysCount(currentStart, currentEnd),
+        getReplaysCount(prevStart, prevEnd)
+      ]);
+    }
+
+    // ==========================================
+    // 3. GROWTH CALCULATION
+    // ==========================================
+    const calculatePercentage = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Number((((current - previous) / previous) * 100).toFixed(1));
+    };
+
+    const trend = calculatePercentage(currentCount, prevCount);
+
+    return res.status(200).json({
+      success: true,
+      trend // Only returning the trend to match our frontend setup
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.getAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.params.adminId;
+
+    const admin = await Admin.findById(adminId).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: admin._id,
+        userName: admin.userName,
+        email: admin.email,
+        fullname: admin.fullname || "Admin", // Default if null,
+
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+exports.editAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.params.adminId;
+    const { fullname, userName, email, password } = req.body;
+
+    // 1. Fetch the admin document
+    let admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found"
+      });
+    }
+
+    // 2. Update the fields directly on the document
+    if (fullname) admin.fullname = fullname;
+    if (userName) admin.userName = userName;
+    if (email) admin.email = email;
+
+    // 3. Check if the user typed a new password. If yes, hash it!
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(password, salt);
+    }
+
+    // 4. Save the document
+    // This uses the modern MongoDB driver and automatically runs your schema validations
+    await admin.save();
+
+    // 5. Convert to a plain object and remove the password before sending to frontend
+    const adminObj = admin.toObject();
+    delete adminObj.password;
+
+    // 6. Send the success response
+    return res.status(200).json({
+      success: true,
+      message: "Admin profile updated successfully",
+      data: adminObj
+    });
+
+  } catch (error) {
+    console.error("Error updating admin profile:", error);
+
+    // Check for MongoDB Duplicate Key Error (e.g., email or username already taken)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `An admin with that ${field} already exists.`
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update profile due to an internal server error"
+    });
+  }
+};
+
+
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // 1. Check if admin exists
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "No admin found with that email" });
+    }
+
+    // 2. Generate a secure 4-digit OTP
+    const otp = crypto.randomInt(1000, 9999).toString();
+
+    // 3. Save the OTP and Expiry (Valid for 10 minutes) to the DB
+    admin.resetPasswordOtp = otp;
+    admin.resetPasswordOtpExpire = Date.now() + 10 * 60 * 1000;
+    await admin.save();
+
+    // 4. Send the email using your existing email utility function
+    // Pass the email and the generated OTP to your custom function
+    // await sendOtpEmail(admin.email, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully to your email"
+    });
+
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+
+    // Optional: If the email fails, clear the OTP from the DB so they can try again
+    return res.status(500).json({ success: false, message: "Failed to send OTP email" });
+  }
+};
+
+
+exports.resetPassword = async (req, res) => {
+  try {
+    // 1. Get the required fields from the frontend request
+    const { email, otp, newPassword } = req.body;
+
+    // Basic validation
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, OTP, and new password are required"
+      });
+    }
+
+    // 2. Find the admin with that exact email and OTP
+    // (Expiration check removed for now)
+    const admin = await Admin.findOne({
+      email: email,
+      resetPasswordOtp: otp
+    });
+
+    // If no admin is found, the OTP or the email is wrong
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP   "
+      });
+    }
+
+    // 3. Hash the new password securely
+    const salt = await bcrypt.genSalt(10);
+    admin.password = await bcrypt.hash(newPassword, salt);
+
+    // 4. Clear the OTP fields from the database so this code cannot be reused
+    admin.resetPasswordOtp = undefined;
+    admin.resetPasswordOtpExpire = undefined;
+
+    // 5. Save the new password
+    await admin.save();
+
+    // 6. Send success response back to React
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully! You can now log in."
+    });
+
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while resetting the password"
     });
   }
 };

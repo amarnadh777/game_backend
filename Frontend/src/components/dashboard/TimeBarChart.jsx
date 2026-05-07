@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip
 } from 'recharts';
+import axiosInstance from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -35,7 +36,7 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
   const fetchGraphData = async (filterValue, start = '', end = '') => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/timing-chart`, {
+      const response = await axiosInstance.get(`/admin/timing-chart`, {
         params: {
           filter: filterValue,
           ...(filterValue === 'custom' && { startDate: start, endDate: end })

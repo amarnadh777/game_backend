@@ -3,9 +3,18 @@ import axios from 'axios';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip
 } from 'recharts';
+import axiosInstance from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const COLORS = ['#28B67A', '#F3C300', '#0A3D81', '#E74C3C', '#9B59B6', '#1ABC9C', '#34495E'];
+
+const CAR_NAME_MAP = {
+  "icaur_v27_royal": "Icaur V27 Royal",
+  "lexus_lx_600_urban": "Lexus LX 600 Urban",
+  "jetour_g700": "Jetour G700",
+  "deepal_g318": "Deepal G318",
+  "toyota_land_cruiser_gx_r_3_5l": "Toyota Land Cruiser GX-R 3.5L"
+};
 
 // Standardized values to match Dashboard ('all' instead of 'all_time')
 const quickFilters = [
@@ -37,7 +46,7 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
   const fetchGraphData = async (filterValue, start = '', end = '') => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/vehicles-chart`, {
+      const response = await axiosInstance.get(`/admin/vehicles-chart`, {
         params: {
           filter: filterValue,
           ...(filterValue === 'custom' && { startDate: start, endDate: end })
@@ -47,7 +56,11 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
       if (response.data.success) {
         const formattedData = response.data.data
           .filter(item => item.count > 0)
-          .map(item => ({ name: item.name, value: item.count }));
+          .map(item => ({ 
+            // Map the raw string to the readable name, fallback to original if not in map
+            name: CAR_NAME_MAP[item.name] || item.name, 
+            value: item.count 
+          }));
           
         setChartData(formattedData);
       }
@@ -125,7 +138,7 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-[15px] font-bold text-gray-800">Most Played Vehicles</h2>
+     <h2 className="text-[15px] font-bold text-gray-800">Vehicle Usage Distribution</h2>
 
         <div className="relative">
           <button

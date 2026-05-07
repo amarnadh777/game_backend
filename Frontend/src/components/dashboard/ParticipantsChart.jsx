@@ -4,6 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip
 } from 'recharts';
+import axiosInstance from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -37,7 +38,7 @@ const ParticipantsChart = ({ activeFilter: globalFilter, customRange: globalCust
   const fetchGraphData = async (filterValue, start = '', end = '') => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/participants-chart`, {
+      const response = await axiosInstance.get(`/admin/participants-chart`, {
         params: {
           filter: filterValue,
           ...(filterValue === 'custom' && { startDate: start, endDate: end })

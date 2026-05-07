@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import axios from 'axios'; 
+import axiosInstance from '../api/axios';
 
 const AdminManagement = () => {
   // --- State Management ---
@@ -32,7 +33,7 @@ const AdminManagement = () => {
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/list`);
+        const response = await axiosInstance.get(`/admin/list`);
         if (response.data.success) {
           setAdmins(response.data.data);
         }
@@ -74,12 +75,18 @@ const AdminManagement = () => {
     if (isEditing) {
       // 1. REAL PUT REQUEST TO EDIT ADMIN
       try {
-        const response = await axios.put(`${import.meta.env.VITE_API_URL}/admin/profile/edit/${currentAdminId}`, {
+        const payload = {
           fullname: formData.fullname,
           userName: formData.userName,
           email: formData.email,
-          password: formData.password
-        });
+        };
+        
+        // Only include password if the user typed a new one
+        if (formData.password) {
+          payload.password = formData.password;
+        }
+
+        const response = await axiosInstance.put(`/admin/profile/edit/${currentAdminId}`, payload);
 
         if (response.data.success) {
           // Replace the old admin data in the state with the newly updated data from the backend
@@ -100,11 +107,11 @@ const AdminManagement = () => {
     } else {
       // 2. REAL POST REQUEST TO CREATE ADMIN
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/create`, {
+        const response = await axiosInstance.post(`/admin/create-with-temp-password`, {
           fullname: formData.fullname,
           userName: formData.userName,
-          email: formData.email,
-          password: formData.password
+          email: formData.email
+          // Password omitted for creation as per request
         });
 
         const data = response.data;
@@ -139,7 +146,7 @@ const AdminManagement = () => {
   // ==========================================
   const handleToggleStatus = async (id, currentStatus) => {
     try {
-      const response = await axios.patch(`${import.meta.env.VITE_API_URL}/admin/toggle-status/${id}`, {}, {
+      const response = await axiosInstance.patch(`/admin/toggle-status/${id}`, {}, {
         // headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
 
@@ -175,7 +182,7 @@ const AdminManagement = () => {
     setIsDeleting(true);
     
     try {
-      const response = await axios.delete(`${import.meta.env.VITE_API_URL}/admin/delete/${adminToDelete._id}`, {
+      const response = await axiosInstance.delete(`/admin/delete/${adminToDelete._id}`, {
         // headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
 
@@ -295,12 +302,15 @@ const AdminManagement = () => {
                 <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="john@example.com" />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password {isEditing && <span className="text-xs text-gray-400 font-normal">(Leave blank to keep current)</span>}
-                </label>
-                <input required={!isEditing} type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="••••••••" />
-              </div>
+              {/* Password field only shown when editing an admin */}
+              {isEditing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password <span className="text-xs text-gray-400 font-normal">(Leave blank to keep current)</span>
+                  </label>
+                  <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="••••••••" />
+                </div>
+              )}
 
               <div className="mt-4 flex gap-3 justify-end">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">

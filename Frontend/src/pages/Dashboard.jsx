@@ -6,6 +6,7 @@ import TimeBarChart from '../components/dashboard/TimeBarChart';
 import PieChartComponent from '../components/dashboard/PieChartComponent';
 import ParticipantsByCoutry from '../components/dashboard/ParticipantsByCoutry';
 import axios from 'axios';
+import axiosInstance from '../api/axios';
 
 const QUICK_FILTERS = [
   { label: 'All time', value: 'all' },
@@ -47,7 +48,7 @@ function Dashboard() {
       }
 
       // ONLY fetch data for the top 4 stats cards (Charts handle themselves now)
-      const statsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/admin/stats-cards`, { 
+      const statsResponse = await axiosInstance.get(`/admin/stats-cards`, { 
         params: { timeframe: filterValue, ...params } 
       });
 
@@ -75,7 +76,17 @@ function Dashboard() {
 
   const handleApplyCustom = () => {
     if (!customRange.from || !customRange.to) return;
-    const label = `${customRange.from} → ${customRange.to}`;
+    
+    // Helper function to format YYYY-MM-DD to DD/MM/YY
+    const formatDate = (dateStr) => {
+      const [year, month, day] = dateStr.split('-');
+      // year.slice(2) takes the last 2 digits of the year
+      return `${day}/${month}/${year.slice(2)}`;
+    };
+
+    // Apply the formatting to the label
+    const label = `${formatDate(customRange.from)} → ${formatDate(customRange.to)}`;
+    
     setActiveFilter({ label, value: 'custom' });
     setDropdownOpen(false);
     fetchDashboardData('custom', customRange.from, customRange.to);

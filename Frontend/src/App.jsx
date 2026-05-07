@@ -14,11 +14,13 @@ import { Toaster } from 'react-hot-toast';
 import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminManagement from './pages/AdminManagement';
+import DisabledAccountCard from './components/DisabledAccountCard';
 
 function App() {
   return (
     <>
       <Toaster position="top-right" />
+      <DisabledAccountCard />
       <BrowserRouter>
         <Routes>
           

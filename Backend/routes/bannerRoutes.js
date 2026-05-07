@@ -2,12 +2,12 @@ const router = require('express').Router();
 const bannerController = require("../controller/bannerController")
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require('../middleware/upload');
-
-router.post("/upload", upload.any(), bannerController.uploadImage)
+const protectAdmin = require("../middleware/protectAdmin");
+router.post("/upload", protectAdmin, upload.any(), bannerController.uploadImage)
 router.get("/list", bannerController.getBannerImages)
-router.get("/admin-banners", bannerController.getAdminBanners)
-router.delete("/delete/:id", bannerController.deleteBannerImage)
-router.put("/update/:id", upload.any(), bannerController.updateImage)
+router.get("/admin-banners", protectAdmin, bannerController.getAdminBanners)
+router.delete("/delete/:id", protectAdmin, bannerController.deleteBannerImage)
+router.put("/update/:id", protectAdmin, upload.any(), bannerController.updateImage)
 
 
 router.patch("/toggle-status/:id", bannerController.toggleBannerStatus)

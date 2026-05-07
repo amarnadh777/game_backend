@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import ExportModal from "../components/ExportModal";
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { getCountryCallingCode } from 'libphonenumber-js'
+import axiosInstance from "../api/axios";
 
 const UserDetails = () => {
   const [users, setUsers] = useState([]);
@@ -32,8 +33,16 @@ const UserDetails = () => {
 
         let url = `${import.meta.env.VITE_API_URL}/game-sessions/admin/leaderboard?page=${currentPage}&limit=${itemsPerPage}`;
 
-        if (filterBy && searchQuery) {
-          url += `&filterBy=${filterBy}&searchQuery=${searchQuery}`;
+        // Prepare the search query to send to the backend
+        let apiSearchQuery = searchQuery;
+
+        // If searching by phone number, remove '+', spaces, and '-' before sending
+        if (filterBy === 'phoneNumber' && apiSearchQuery) {
+          apiSearchQuery = apiSearchQuery.replace(/[\s+-]/g, '');
+        }
+
+        if (filterBy && apiSearchQuery) {
+          url += `&filterBy=${filterBy}&searchQuery=${encodeURIComponent(apiSearchQuery)}`;
         }
 
         if (appliedStartDate && appliedEndDate) {
@@ -44,7 +53,7 @@ const UserDetails = () => {
           url += `&sortBy=${sortConfig.key}&sortOrder=${sortConfig.direction}`;
         }
 
-        const response = await axios.get(url);
+        const response = await axiosInstance.get(url);
         const data = response.data.leaderboard;
         const paginationInfo = response.data.pagination;
 
@@ -83,27 +92,19 @@ const UserDetails = () => {
 
   }, [currentPage, filterBy, searchQuery, appliedStartDate, appliedEndDate, sortConfig]);
 
-  // UPDATED: Dynamically toggle between 'asc' and 'desc'
   const requestSort = (key) => {
     let direction = 'asc';
-
-    // If clicking the same column, toggle the direction
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
-
     setSortConfig({ key, direction });
-    setCurrentPage(1); // Reset to page 1 when sorting changes
+    setCurrentPage(1); 
   };
 
-  // UPDATED: Show ArrowUp for Ascending, ArrowDown for Descending
   const SortIcon = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) {
-      // Not actively sorting this column
       return <ArrowUpDown className="w-[14px] h-[14px] ml-1 text-gray-400" />;
     }
-
-    // Actively sorting this column
     if (sortConfig.direction === 'asc') {
       return <ArrowUp className="w-[14px] h-[14px] ml-1 text-[#0A3D81]" />;
     } else {
@@ -129,7 +130,6 @@ const UserDetails = () => {
     });
   };
 
-  // NEW HELPER: Converts YYYY-MM-DD to DD/MM/YYYY for the button
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return '';
     const [year, month, day] = dateString.split('-');
@@ -168,7 +168,7 @@ const UserDetails = () => {
     ));
 
     try {
-      await axios.patch(`${import.meta.env.VITE_API_URL}/user/toggle-status/${id}`);
+      await axiosInstance.patch(`/user/toggle-status/${id}`);
     } catch (error) {
       console.error("Failed to update status in DB:", error);
       setUsers(users.map((user) =>
@@ -186,7 +186,6 @@ const UserDetails = () => {
     ?.toLowerCase()
     .replace(/\s/g, "");
 
-  const rawCode = selectedUser?.phoneCode?.trim();
   const countryDialCodeMap = {
     afghanistan: "93", albania: "355", algeria: "213", argentina: "54", armenia: "374", australia: "61", austria: "43",
     azerbaijan: "994", bahrain: "973", bangladesh: "880", belarus: "375", belgium: "32", bolivia: "591", brazil: "55",
@@ -217,6 +216,7 @@ const UserDetails = () => {
     cleanedCode && cleanedCode.length > 0
       ? cleanedCode
       : countryDialCodeMap[normalizedCountry] || "";
+      
   const CAR_NAME_MAP = {
     "icaur_v27_royal": "Icaur V27 Royal",
     "lexus_lx_600_urban": "Lexus LX 600 Urban",
@@ -224,6 +224,7 @@ const UserDetails = () => {
     "deepal_g318": "Deepal G318",
     "toyota_land_cruiser_gx_r_3_5l": "Toyota Land Cruiser GX-R 3.5L"
   };
+
   return (
     <div className="w-full min-h-screen p-6 md:p-8 bg-[#EBF5FF] flex flex-col gap-4">
       <ExportModal isOpen={isCalanderModleOpen} onClose={() => { setIsCalanderModelOpen(false); }} />
@@ -246,7 +247,6 @@ const UserDetails = () => {
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                {/* UPDATED: Uses the applied dates and formats them to DD/MM/YYYY */}
                 {appliedStartDate && appliedEndDate
                   ? `${formatDateForDisplay(appliedStartDate)} to ${formatDateForDisplay(appliedEndDate)}`
                   : "Filter by Date"}
@@ -310,18 +310,13 @@ const UserDetails = () => {
 
             {filterBy && (
               <input
-                // 1. Change keyboard type for mobile users
                 type={filterBy === 'phoneNumber' ? "tel" : "text"}
-
-                // 2. Make the placeholder look better
                 placeholder={filterBy === 'phoneNumber' ? "Search phone number..." : `Search by ${filterBy}...`}
-
                 value={searchQuery}
                 onChange={(e) => {
-                  // 3. Only allow numbers and the '+' sign if filtering by phone
                   if (filterBy === 'phoneNumber') {
                     const val = e.target.value;
-                    if (val === '' || /^[0-9+]+$/.test(val)) {
+                    if (val === '' || /^[0-9+\s-]+$/.test(val)) {
                       setSearchQuery(val);
                       setCurrentPage(1);
                     }
@@ -413,7 +408,6 @@ const UserDetails = () => {
                 users.map((user) => {
                   return (
                     <React.Fragment key={user.id}>
-                      {/* Main Row */}
                       <tr className="hover:bg-gray-50 transition-colors cursor-pointer">
                         <td className="py-4 px-6 text-[14px] text-gray-500">{user.rank}</td>
                         <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.player}</td>
@@ -423,7 +417,6 @@ const UserDetails = () => {
                         <td className="py-4 px-6 text-[14px] text-gray-600">{formatTimeTaken(user.finished)}</td>
 
                         <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                          {/* Status Toggle */}
                           <div
                             onClick={() => toggleStatus(user.id, user.status)}
                             className={`relative inline-flex h-[28px] w-[85px] items-center rounded-full cursor-pointer transition-colors ${user.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
@@ -446,7 +439,7 @@ const UserDetails = () => {
                               setSelectedUser(user);
                             }}
                           >
-                            View Modal <span className="text-gray-400">&gt;</span>
+                            View Details <span className="text-gray-400">&gt;</span>
                           </button>
                         </td>
                       </tr>

@@ -4,7 +4,7 @@ const ExcelJS = require("exceljs");
 
 exports.startGame = async (req, res) => {
   try {
-    const  userId  = req.user._id;
+    const userId = req.user._id;
     // console.log("Starting game for user:", userId);
 
     if (!userId) {
@@ -96,7 +96,7 @@ exports.finishGame = async (req, res) => {
 
 exports.startGame = async (req, res) => {
   try {
-    const  userId  = req.user._id;
+    const userId = req.user._id;
     // console.log("Starting game for user:", userId);
 
     if (!userId) {
@@ -304,7 +304,7 @@ exports.finishGameDirect = async (req, res) => {
           status: session.status,
           completedAt: session.completedAt
         },
-        
+
         rank,
         bestScore: {
           _id: bestScore._id,
@@ -368,12 +368,12 @@ exports.restGame = async (req, res) => {
 
 exports.getGameLeaderBord = async (req, res) => {
   try {
-    let { 
-      page = 1, 
-      limit = 10, 
-      filterBy, 
-      searchQuery, 
-      startDate, 
+    let {
+      page = 1,
+      limit = 10,
+      filterBy,
+      searchQuery,
+      startDate,
       endDate,
       sortBy,
       sortOrder
@@ -385,7 +385,7 @@ exports.getGameLeaderBord = async (req, res) => {
 
     // Match stage
     let matchStage = {};
-    
+
     if (filterBy && searchQuery) {
       if (filterBy === "email") {
         matchStage.email = { $regex: searchQuery, $options: "i" };
@@ -396,6 +396,10 @@ exports.getGameLeaderBord = async (req, res) => {
           { firstName: { $regex: searchQuery, $options: "i" } },
           { lastName: { $regex: searchQuery, $options: "i" } }
         ];
+      } else if (filterBy === "phoneNumber") {
+        // IMPORTANT: Escape the '+' sign so it doesn't break the regex
+        const safeQuery = searchQuery.replace(/\+/g, "\\+");
+        matchStage.phoneNumber = { $regex: safeQuery, $options: "i" };
       }
     }
 
@@ -414,38 +418,37 @@ exports.getGameLeaderBord = async (req, res) => {
 
     if (sortBy === 'speed') {
       const order = sortOrder === 'asc' ? 1 : -1;
-      sortStage = { 
+      sortStage = {
         "sessionData.highestSpeed": order,
         "sessionData.timeTaken": 1
       };
-    } 
+    }
     else if (sortBy === 'finished') {
       const order = sortOrder === 'asc' ? 1 : -1;
-      sortStage = { 
+      sortStage = {
         "sessionData.timeTaken": order,
         "sessionData.highestSpeed": -1
       };
-    } 
+    }
     else {
       sortStage = {
-   
         "sessionData.timeTaken": 1,
-        createdAt: -1 
+        createdAt: -1
       };
     }
 
     // Pipeline
     const pipeline = [
-      { $match: matchStage }, 
+      { $match: matchStage },
       {
         $lookup: {
-          from: "gamesessions", 
+          from: "gamesessions", // Double check that this matches your actual collection name in MongoDB!
           localField: "_id",
           foreignField: "userId",
           pipeline: [
-            { $match: { status: "COMPLETED" } }, 
-            { $sort: { highestSpeed: -1, timeTaken: 1 } }, 
-            { $limit: 1 } 
+            { $match: { status: "COMPLETED" } },
+            { $sort: { highestSpeed: -1, timeTaken: 1 } },
+            { $limit: 1 }
           ],
           as: "sessionData"
         }
@@ -453,21 +456,21 @@ exports.getGameLeaderBord = async (req, res) => {
       {
         $unwind: {
           path: "$sessionData",
-          preserveNullAndEmptyArrays: true 
+          preserveNullAndEmptyArrays: true
         }
       },
       // Push users with no session to the bottom
       {
         $addFields: {
-          hasPlayed: { 
-            $cond: [{ $ifNull: ["$sessionData", false] }, 1, 0] 
+          hasPlayed: {
+            $cond: [{ $ifNull: ["$sessionData", false] }, 1, 0]
           }
         }
       },
       {
-        $sort: { 
+        $sort: {
           hasPlayed: -1,
-          ...sortStage 
+          ...sortStage
         }
       },
       {
@@ -488,7 +491,7 @@ exports.getGameLeaderBord = async (req, res) => {
 
       return {
         rank: hasPlayed ? skip + index + 1 : "-",
-        id: user._id, 
+        id: user._id,
         firstName: user.firstName,
         lastName: user.lastName || "",
         email: user.email,
@@ -500,6 +503,7 @@ exports.getGameLeaderBord = async (req, res) => {
         highestSpeed: hasPlayed ? user.sessionData.highestSpeed : "N/A",
         timeTaken: hasPlayed ? user.sessionData.timeTaken : "N/A",
         completedAt: hasPlayed ? user.sessionData.completedAt : null,
+        vehicle: hasPlayed ? (user.sessionData.vehicle || "N/A") : "N/A",
       };
     });
 
@@ -575,7 +579,7 @@ exports.getGameLeaderBord = async (req, res) => {
 //       country: session.userId.country,
 //       status: session.userId.status ? "Active" : "Inactive",
 //       phoneNumber: session.userId.phoneNumber,
-      
+
 //     })
 
 //   );
@@ -627,7 +631,7 @@ exports.getGameLeaderBord = async (req, res) => {
 
 //  res.end();
 
-  
+
 //   } catch (error) {
 
 //     console.log(error)  
@@ -644,7 +648,7 @@ exports.dowloadLeaderBoard = async (req, res) => {
 
     // 1. Build the specific match for the Game Sessions
     let sessionMatch = { status: "COMPLETED" };
-    
+
     // Check if valid dates were passed
     if (startDate && endDate && startDate !== "undefined" && endDate !== "undefined" && startDate !== "null") {
       const endOfDay = new Date(endDate);
@@ -659,17 +663,17 @@ exports.dowloadLeaderBoard = async (req, res) => {
     // 2. Execute Aggregation (Exactly like getGameLeaderBord, just no pagination!)
     const data = await User.aggregate([
       // Assuming you want active users only. Remove if you want all.
-      { $match: { status: true } }, 
+      { $match: { status: true } },
       {
         $lookup: {
-          from: "gamesessions", 
+          from: "gamesessions",
           localField: "_id",
           foreignField: "userId",
           pipeline: [
             { $match: sessionMatch }, // Applies the date range filter
             // EXACT SAME SORT AS UI:
-            { $sort: { highestSpeed: -1, timeTaken: 1 } }, 
-            { $limit: 1 } 
+            { $sort: { highestSpeed: -1, timeTaken: 1 } },
+            { $limit: 1 }
           ],
           as: "sessionData"
         }
@@ -677,7 +681,7 @@ exports.dowloadLeaderBoard = async (req, res) => {
       {
         $unwind: {
           path: "$sessionData",
-          preserveNullAndEmptyArrays: true 
+          preserveNullAndEmptyArrays: true
         }
       },
       {
@@ -713,14 +717,14 @@ exports.dowloadLeaderBoard = async (req, res) => {
 
       // Date Formatting
       const formattedDate = hasPlayed && user.sessionData.completedAt
-        ? new Date(user.sessionData.completedAt).toLocaleString('en-GB', { 
-            day: '2-digit', month: 'short', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
-          })
+        ? new Date(user.sessionData.completedAt).toLocaleString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        })
         : "N/A";
 
       return {
-        rank: formattedRank, 
+        rank: formattedRank,
         firstName: user.firstName || "N/A",
         lastName: user.lastName || "",
         email: user.email || "N/A",
@@ -759,12 +763,12 @@ exports.dowloadLeaderBoard = async (req, res) => {
     const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    const fileName = (startDate && startDate !== "undefined") 
-      ? `leaderboard_${startDate}_to_${endDate}.xlsx` 
+    const fileName = (startDate && startDate !== "undefined")
+      ? `leaderboard_${startDate}_to_${endDate}.xlsx`
       : `leaderboard_all_time.xlsx`;
-      
+
     res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
-    
+
     return res.send(buffer);
 
   } catch (error) {
@@ -782,7 +786,7 @@ exports.dowloadLeaderBoard = async (req, res) => {
 
     // 1. Build the specific match for the Game Sessions
     let sessionMatch = { status: "COMPLETED" };
-    
+
     // SAFETY CHECK: Ensure dates exist and aren't "undefined" strings from the frontend
     if (startDate && endDate && startDate !== "undefined" && endDate !== "undefined" && startDate !== "null") {
       const endOfDay = new Date(endDate);
@@ -800,13 +804,13 @@ exports.dowloadLeaderBoard = async (req, res) => {
 
       {
         $lookup: {
-          from: "gamesessions", 
+          from: "gamesessions",
           localField: "_id",
           foreignField: "userId",
           pipeline: [
-            { $match: sessionMatch }, 
+            { $match: sessionMatch },
             { $sort: { timeTaken: 1, highestSpeed: -1, completedAt: -1 } },
-            { $limit: 1 } 
+            { $limit: 1 }
           ],
           as: "sessionData"
         }
@@ -821,16 +825,16 @@ exports.dowloadLeaderBoard = async (req, res) => {
       {
         $unwind: {
           path: "$sessionData",
-          preserveNullAndEmptyArrays: true 
+          preserveNullAndEmptyArrays: true
         }
       },
       {
         $sort: {
-          hasPlayed: -1,                   
-          "sessionData.timeTaken": 1,      
-          "sessionData.highestSpeed": -1,  
-          "sessionData.completedAt": -1,   
-          createdAt: -1                    
+          hasPlayed: -1,
+          "sessionData.timeTaken": 1,
+          "sessionData.highestSpeed": -1,
+          "sessionData.completedAt": -1,
+          createdAt: -1
         }
       }
     ]);
@@ -855,14 +859,14 @@ exports.dowloadLeaderBoard = async (req, res) => {
       const formattedRank = rawRank === "-" ? "-" : String(rawRank).padStart(2, '0');
 
       const formattedDate = played && user.sessionData.completedAt
-        ? new Date(user.sessionData.completedAt).toLocaleString('en-GB', { 
-            day: '2-digit', month: 'short', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
-          })
+        ? new Date(user.sessionData.completedAt).toLocaleString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        })
         : "N/A";
 
       return {
-        rank: formattedRank, 
+        rank: formattedRank,
         firstName: user.firstName || "N/A",
         lastName: user.lastName || "",
         email: user.email || "N/A",
@@ -874,7 +878,7 @@ exports.dowloadLeaderBoard = async (req, res) => {
         phoneNumber: user.phoneNumber || "N/A",
       };
     });
-   console.log(leaderboard)
+    console.log(leaderboard)
     // 5. Build the Excel Document
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Leaderboard");
@@ -902,12 +906,12 @@ exports.dowloadLeaderBoard = async (req, res) => {
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     // Fallback name if dates are missing
-    const fileName = (startDate && startDate !== "undefined") 
-      ? `leaderboard_${startDate}_to_${endDate}.xlsx` 
+    const fileName = (startDate && startDate !== "undefined")
+      ? `leaderboard_${startDate}_to_${endDate}.xlsx`
       : `leaderboard_all_time.xlsx`;
-      
+
     res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
-    
+
     return res.send(buffer);
 
   } catch (error) {

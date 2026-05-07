@@ -22,6 +22,15 @@ const adminSchema = new mongoose.Schema({
   },
   resetPasswordOtpExpire: {
     type: Date,
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'superadmin'],
+    default: 'admin'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 });
 

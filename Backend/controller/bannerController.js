@@ -183,15 +183,23 @@ exports.uploadImage = async (req, res) => {
 
 exports.getBannerImages = async (req, res) => {
   try {
+
     const { page = 1, search = "" } = req.query;
 
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    // --- CHANGED 'title' TO 'name' HERE ---
-    const query = search
-      ? { name: { $regex: search, $options: "i" } }
-      : {};
+    const query = {
+      status: true
+    };
+
+    // search filter
+    if (search) {
+      query.name = {
+        $regex: search,
+        $options: "i"
+      };
+    }
 
     const banners = await Banner.find(query)
       .sort({ createdAt: -1 })
@@ -208,10 +216,96 @@ exports.getBannerImages = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    res.status(500).json({
+      message: error.message
+    });
+
   }
 };
 
+exports.getAdminBanners = async (req, res) => {
+  try {
+
+    const {
+      page = 1,
+      search = "",
+      status
+    } = req.query;
+
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+
+    // 🔥 Search filter
+    if (search) {
+      query.name = {
+        $regex: search,
+        $options: "i"
+      };
+    }
+
+    // 🔥 Status filter
+    if (status !== undefined) {
+      query.status = status === "true";
+    }
+
+    // 🔥 Get all banners first
+    const banners = await Banner.find(query)
+      .sort({ createdAt: -1 });
+
+    // 🔥 Group by bannerId
+    const grouped = {};
+
+    banners.forEach((banner) => {
+
+      if (!grouped[banner.bannerId]) {
+
+        grouped[banner.bannerId] = {
+          bannerId: banner.bannerId,
+          variants: []
+        };
+
+      }
+
+      grouped[banner.bannerId].variants.push(banner);
+
+    });
+
+    // 🔥 Convert object -> array
+    const groupedArray = Object.values(grouped);
+
+    // 🔥 Pagination after grouping
+    const paginatedGroups = groupedArray.slice(
+      skip,
+      skip + limit
+    );
+
+    res.status(200).json({
+      success: true,
+
+      banners: paginatedGroups,
+
+      page: Number(page),
+
+      totalPages: Math.ceil(
+        groupedArray.length / limit
+      ),
+
+      total: groupedArray.length
+
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
 // exports.deleteBannerImage = async (req, res) => {
 
 //   try {
@@ -536,29 +630,112 @@ exports.updateImage = async (req, res) => {
 
 exports.toggleBannerStatus = async (req, res) => {
   try {
+
     const { id } = req.params;
+
+    // selected banner
+    const banner = await Banner.findById(id);
+
+    if (!banner) {
+      return res.status(404).json({
+        success: false,
+        message: "Banner not found"
+      });
+    }
+
+    // 🔥 if enabling banner
+    if (!banner.status) {
+
+      // disable all variants 
+      await Banner.updateMany(
+        {
+          bannerId: banner.bannerId
+        },
+        {
+          $set: {
+            status: false
+          }
+        }
+      );
+
+      // enable selected banner
+      banner.status = true;
+
+    } else {
+
+      // disable current banner
+      banner.status = false;
+
+    }
+
+    await banner.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Banner status updated",
+      banner
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
+
+exports.cloneBanner = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Extract the custom name sent from the frontend
+    const { name: customName } = req.body;
 
     const banner = await Banner.findById(id);
 
     if (!banner) {
       return res.status(404).json({
+        success: false,
         message: "Banner not found"
       });
     }
 
-    // toggle status
-    banner.status = !banner.status;
+    const clonedBanner = new Banner({
+      slNo: banner.slNo,
 
-    await banner.save();
+      // same group
+      bannerId: banner.bannerId,
 
-    res.status(200).json({
-      message: "Banner status updated successfully",
-      banner
+      // Use the custom name from the frontend if provided, otherwise default to "Copy"
+      name: customName ? customName : `${banner.name} Copy`,
+
+      clonedFrom: banner._id,
+
+      imageUrl: banner.imageUrl,
+
+      isCarSpecific: banner.isCarSpecific,
+
+      carImages: banner.carImages,
+
+      resolution: banner.resolution,
+
+      // inactive by default
+      status: false
+    });
+
+    await clonedBanner.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Banner cloned successfully",
+      data: clonedBanner
     });
 
   } catch (error) {
-    console.error("Error toggling banner status:", error);
     res.status(500).json({
+      success: false,
       message: error.message
     });
   }

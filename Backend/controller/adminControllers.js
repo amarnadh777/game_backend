@@ -274,21 +274,158 @@ exports.getParticipantsGraphData = async (req, res) => {
   }
 };
 
+exports.getStatsCardsData = async (req, res) => {
+  try {
+    const { timeframe = 'all', from, to } = req.query;
+
+    // ==========================================
+    // 1. GET CURRENT DATES (Using your utility)
+    // ==========================================
+    let currentStart = null;
+    let currentEnd = null;
+
+    if (timeframe !== 'all') {
+      const { startDate, endDate } = getDateRange(timeframe, from, to);
+      currentStart = startDate;
+      currentEnd = endDate;
+    }
+
+    // ==========================================
+    // 2. CALCULATE PREVIOUS DATES & TREND LABEL
+    // ==========================================
+    let prevStart = null;
+    let prevEnd = null;
+    let trendLabel = null; // NEW: Dynamic text for the frontend
+
+    if (timeframe === 'today') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
+      prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 1);
+      trendLabel = "vs yesterday";
+    } else if (timeframe === 'this_week') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs last week";
+    } else if (timeframe === 'last_week') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs previous week";
+    } else if (timeframe === 'this_month') {
+      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs last month";
+    } else if (timeframe === 'last_month') {
+      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs previous month";
+    }
+    // For 'all' and 'custom', prevStart/prevEnd stay null, and trendLabel stays null.
+
+    // ==========================================
+    // 3. BUILD MONGODB FILTERS
+    // ==========================================
+    const buildMatch = (start, end, isSession = false) => {
+      if (!start || !end) return isSession ? { status: "COMPLETED" } : {};
+      const dateField = isSession ? "completedAt" : "createdAt";
+      return { ...(isSession && { status: "COMPLETED" }), [dateField]: { $gte: start, $lte: end } };
+    };
+
+    const currentMatchUser = buildMatch(currentStart, currentEnd, false);
+    const currentMatchSession = buildMatch(currentStart, currentEnd, true);
+
+    // ==========================================
+    // 4. FETCH CURRENT DATA
+    // ==========================================
+    const [
+      totalUsers,
+      participantsAgg,
+      totalSessions,
+      vehicleAgg
+    ] = await Promise.all([
+      User.countDocuments(currentMatchUser),
+      GameSession.aggregate([{ $match: currentMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+      GameSession.countDocuments(currentMatchSession),
+      GameSession.aggregate([
+        { $match: { ...currentMatchSession, vehicle: { $exists: true, $ne: null } } },
+        { $group: { _id: "$vehicle", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 }
+      ])
+    ]);
+
+    const totalParticipants = participantsAgg.length > 0 ? participantsAgg[0].count : 0;
+    const totalReplays = Math.max(0, totalSessions - totalParticipants);
+    const mostUsedVehicle = vehicleAgg.length > 0 ? vehicleAgg[0]._id : null;
+
+    // ==========================================
+    // 5. FETCH PREVIOUS DATA & CALCULATE GROWTH
+    // ==========================================
+    // Default to null so frontend hides the arrow for Custom/All Time
+    let registrationGrowth = null, participantGrowth = null, replayGrowth = null;
+
+    const calculatePercentage = (curr, prev) => {
+      if (prev === 0) return curr > 0 ? 100 : 0;
+      return Number((((curr - prev) / prev) * 100).toFixed(1));
+    };
+
+    if (prevStart && prevEnd) {
+      const prevMatchUser = buildMatch(prevStart, prevEnd, false);
+      const prevMatchSession = buildMatch(prevStart, prevEnd, true);
+
+      const [prevUsers, prevPartsAgg, prevSessions] = await Promise.all([
+        User.countDocuments(prevMatchUser),
+        GameSession.aggregate([{ $match: prevMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+        GameSession.countDocuments(prevMatchSession)
+      ]);
+
+      const prevParticipants = prevPartsAgg.length > 0 ? prevPartsAgg[0].count : 0;
+      const prevReplays = Math.max(0, prevSessions - prevParticipants);
+
+      registrationGrowth = calculatePercentage(totalUsers, prevUsers);
+      participantGrowth = calculatePercentage(totalParticipants, prevParticipants);
+      replayGrowth = calculatePercentage(totalReplays, prevReplays);
+    }
+
+    // ==========================================
+    // 6. SEND RESPONSE
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      data: {
+        trendLabel, // Passes the text to React (e.g., "vs yesterday")
+        totalUsers,
+        registrationGrowth,
+        totalParticipants,
+        participantGrowth,
+        totalReplays,
+        replayGrowth,
+        mostUsedVehicle // No growth data passed here, so frontend hides it automatically!
+      }
+    });
+
+  } catch (error) {
+    console.error("Stats Card Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 exports.getTimingGraphData = async (req, res) => {
   try {
-    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+    // Default to 'all' if no filter is provided
+    const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
 
-    // Use the same helper function we created earlier
-    const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
-
-    // Create the base match object with the date filter
+    // 1. Create the base match object
     const baseMatch = { status: "COMPLETED" };
-    if (startDate && endDate) {
-      baseMatch.completedAt = { $gte: startDate, $lte: endDate };
+
+    // 2. Only calculate and apply date ranges if the filter is NOT 'all' or 'all_time'
+    if (filter !== 'all' && filter !== 'all_time') {
+      const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
+
+      if (startDate && endDate) {
+        baseMatch.completedAt = { $gte: startDate, $lte: endDate };
+      }
     }
 
-    // 1. Fetch the raw data grouped by hour
+    // 3. Fetch the raw data grouped by hour
     const hourlyParticipantsData = await GameSession.aggregate([
       { $match: baseMatch },
       {
@@ -299,7 +436,7 @@ exports.getTimingGraphData = async (req, res) => {
       },
     ]);
 
-    // 2. Initialize your timing buckets to 0
+    // 4. Initialize your timing buckets to 0
     const timingGraphData = [
       { time: "8am", participants: 0 },
       { time: "10am", participants: 0 },
@@ -310,7 +447,7 @@ exports.getTimingGraphData = async (req, res) => {
       { time: "8pm", participants: 0 },
     ];
 
-    // 3. Populate the buckets with the database results
+    // 5. Populate the buckets with the database results
     hourlyParticipantsData.forEach((data) => {
       const hour = data._id;
       const count = data.participantsCount;
@@ -478,10 +615,10 @@ exports.getCountryGraphData = async (req, res) => {
 };
 exports.creatAdmin = async (req, res) => {
   try {
-    const { email, password, username } = req.body;
+    const { email, password, userName, fullname } = req.body;
 
     // 1. Check if ALL fields are provided
-    if (!email || !password || !username) {
+    if (!email || !password || !userName) {
       return res.status(400).json({
         success: false,
         message: "All fields are required (email, password, and username)",
@@ -490,7 +627,7 @@ exports.creatAdmin = async (req, res) => {
 
     // 2. Check if admin already exists
     const existingAdmin = await Admin.findOne({
-      $or: [{ email: email }, { userName: username }],
+      $or: [{ email: email }, { userName: userName }],
     });
 
     if (existingAdmin) {
@@ -508,7 +645,8 @@ exports.creatAdmin = async (req, res) => {
     const newAdmin = new Admin({
       email: email,
       password: hashedPassword,
-      userName: username,
+      userName: userName,
+      fullname: fullname
     });
 
     await newAdmin.save();
@@ -520,7 +658,9 @@ exports.creatAdmin = async (req, res) => {
       data: {
         id: newAdmin._id,
         email: newAdmin.email,
-        userName: newAdmin.userName
+        userName: newAdmin.userName,
+        fullname: newAdmin.fullname,
+        isActive: newAdmin.isActive
       },
     });
 
@@ -532,6 +672,24 @@ exports.creatAdmin = async (req, res) => {
     });
   }
 }
+
+exports.getAllAdminList = async (req, res) => {
+
+  try {
+    const adminList = await Admin.find({ role: "admin" });
+    return res.status(200).json({
+      success: true,
+      data: adminList,
+    });
+  } catch (error) {
+    console.error("Get All Admin List Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
 exports.loginAdmin = async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -544,7 +702,7 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
-    // 2. Find admin by email or userName (matching the field name in your create function)
+    // 2. Find admin by email or userName
     const admin = await Admin.findOne({
       $or: [{ email: email }, { userName: username }],
     });
@@ -556,8 +714,17 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
+    // ==========================================
+    // NEW CHECK: Prevent disabled admins from logging in
+    // ==========================================
+    if (admin.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been disabled. Please contact an administrator.",
+      });
+    }
+
     // 3. Compare the provided password with the hashed password in the database
-    // (Assuming you have a pre-save hook in your mongoose model that hashes the password)
     const isPasswordMatch = await bcrypt.compare(password, admin.password);
 
     if (!isPasswordMatch) {
@@ -584,12 +751,50 @@ exports.loginAdmin = async (req, res) => {
         email: admin.email,
         userName: admin.userName,
         fullname: admin.fullname,
+        role: admin.role,
+        isActive: admin.isActive // Optional: Send this back to the frontend
       },
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+
+exports.deleteAdmin = async (req, res) => {
+  try {
+    const adminId = req.params.id;
+
+    // 1. Find and delete the admin
+    const deletedAdmin = await Admin.findByIdAndDelete(adminId);
+
+    // 2. If the admin doesn't exist, return an error
+    if (!deletedAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found"
+      });
+    }
+
+    // Optional: Prevent the currently logged-in user from deleting themselves
+    // if (adminId === req.user.id) {
+    //   return res.status(400).json({ success: false, message: "You cannot delete your own account." });
+    // }
+
+    // 3. Send success response
+    return res.status(200).json({
+      success: true,
+      message: "Admin deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Error deleting admin:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 };
@@ -785,7 +990,7 @@ exports.getAdminProfile = async (req, res) => {
 exports.editAdminProfile = async (req, res) => {
   try {
     const adminId = req.params.adminId;
-    const { fullname, userName, email, password } = req.body;
+    const { fullName, userName, email, password } = req.body;
 
     // 1. Fetch the admin document
     let admin = await Admin.findById(adminId);
@@ -797,7 +1002,7 @@ exports.editAdminProfile = async (req, res) => {
     }
 
     // 2. Update the fields directly on the document
-    if (fullname) admin.fullname = fullname;
+    if (fullName) admin.fullname = fullName;
     if (userName) admin.userName = userName;
     if (email) admin.email = email;
 
@@ -837,6 +1042,43 @@ exports.editAdminProfile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update profile due to an internal server error"
+    });
+  }
+};
+
+
+
+exports.toggleAdminStatus = async (req, res) => {
+  try {
+    const adminId = req.params.id;
+
+    // 1. Find the admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    // Optional: Prevent users from disabling themselves so they don't get locked out!
+    // if (adminId === req.user.id) {
+    //   return res.status(400).json({ success: false, message: "You cannot disable your own account." });
+    // }
+
+    // 2. Flip the boolean value (if true make false, if false make true)
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    // 3. Send success response
+    return res.status(200).json({
+      success: true,
+      message: `Admin ${admin.isActive ? 'enabled' : 'disabled'} successfully`,
+      isActive: admin.isActive // send the new status back to frontend
+    });
+
+  } catch (error) {
+    console.error("Error toggling admin status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 };

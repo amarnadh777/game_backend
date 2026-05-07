@@ -3,7 +3,11 @@ const { analytics, creatAdmin, loginAdmin, getParticipantsGraphData, getTimingGr
 
 
 
-    , resetPassword
+    , resetPassword,
+    getStatsCardsData,
+    getAllAdminList,
+    toggleAdminStatus,
+    deleteAdmin
 } = require("../controller/adminControllers");
 
 
@@ -13,6 +17,8 @@ const { analytics, creatAdmin, loginAdmin, getParticipantsGraphData, getTimingGr
 router.get("/analytics", analytics);
 router.post("/login", loginAdmin);
 router.post("/create", creatAdmin);
+router.delete("/delete/:id", deleteAdmin)
+router.get("/list", getAllAdminList)
 router.get("/participants-chart", getParticipantsGraphData)
 router.get("/timing-chart", getTimingGraphData)
 router.get("/vehicles-chart", getVehicleGraphData)
@@ -23,5 +29,6 @@ router.get("/profile/:adminId", getAdminProfile);
 router.put("/profile/edit/:adminId", editAdminProfile);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
-
+router.get("/stats-cards", getStatsCardsData)
+router.patch("/toggle-status/:id", toggleAdminStatus);
 module.exports = router;

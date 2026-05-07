@@ -5,50 +5,63 @@ const carImageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+
   carName: {
     type: String
   },
+
   imageUrl: {
     type: String,
     required: true
   }
+
 }, { _id: false });
 
 const bannerSchema = new mongoose.Schema({
-  slNo: {
-    type: String,
-  },
-  bannerId: {
-    type: String,
-  },
+
+  slNo: String,
+
+  bannerId: String,
 
   name: {
-    type: String, // "Race Track Billboard"
+    type: String,
     required: true
   },
 
-  // 🔥 Normal banner (single image)
-  imageUrl: {
-    type: String,
+  clonedFrom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Banner',
+    default: null
   },
 
-  // 🔥 Car-specific banners
+  imageUrl: String,
+
   isCarSpecific: {
     type: Boolean,
     default: false
   },
 
-  carImages: [carImageSchema], // multiple car images
+  carImages: [carImageSchema],
 
-  resolution: {
-    type: String,
-  },
+  resolution: String,
 
   status: {
     type: Boolean,
-    default: true
+    default: false
   }
 
 }, { timestamps: true });
+
+
+// 🔥 Only ONE active banner for same bannerId
+bannerSchema.index(
+  { bannerId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: true
+    }
+  }
+);
 
 module.exports = mongoose.model('Banner', bannerSchema);

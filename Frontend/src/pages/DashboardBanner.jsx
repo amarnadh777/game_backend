@@ -572,213 +572,146 @@ const DashboardBanner = () => {
         {/* Table Area */}
         <div className="flex-1 overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-[#F3F4F6]">
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-[120px]">Image</th>
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Banner Name</th>
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-32">Status</th>
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-56">Action</th>
+  <thead>
+    <tr className="bg-[#F3F4F6] border-b border-gray-200">
+      <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-12"></th>
+      <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Banner Name</th>
+      <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-32">Status</th>
+      <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-64">Action</th>
+    </tr>
+  </thead>
+
+  <tbody className="divide-y divide-gray-100">
+    {isLoading ? (
+      <tr><td colSpan="4" className="py-12 text-center text-gray-500">Loading banners...</td></tr>
+    ) : banners.length === 0 ? (
+      <tr><td colSpan="4" className="py-12 text-center text-gray-500 font-medium">No banners found.</td></tr>
+    ) : (
+      banners.map((group) => {
+        const isExpanded = expandedGroups[group.bannerId];
+        const hasMultiple = group.variants.length > 1;
+        const firstVariant = group.variants[0];
+
+        return (
+          <React.Fragment key={group.bannerId}>
+            {/* MAIN ROW */}
+            <tr
+              className={`transition-all cursor-pointer border-l-4 ${
+                isExpanded ? "bg-indigo-50/40 border-indigo-600" : "bg-white hover:bg-slate-50 border-transparent"
+              }`}
+              onClick={() => setExpandedGroups(prev => ({ ...prev, [group.bannerId]: !prev[group.bannerId] }))}
+            >
+              <td className="py-4 px-6 text-center">
+                <div className={`transition-transform duration-300 ${isExpanded ? "rotate-90 text-indigo-600" : "text-slate-400"}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </td>
+
+              <td className="py-4 px-6">
+                <div className="flex flex-col">
+                  <span className={`text-[15px] font-bold ${isExpanded ? "text-indigo-900" : "text-slate-800"}`}>
+                    {hasMultiple 
+                      ? (BANNER_MAPPING.find(b => b.id === group.bannerId)?.name || group.bannerId)
+                      : firstVariant.name
+                    }
+                  </span>
+                  {hasMultiple && (
+                    <span className="text-[11px] text-indigo-500 font-bold mt-0.5 uppercase tracking-tight">
+                      {group.variants.length} Variants Available
+                    </span>
+                  )}
+                </div>
+              </td>
+
+              <td className="py-4 px-6">
+                <span className="text-[14px] font-medium text-slate-600">
+                  {hasMultiple ? "---" : (firstVariant.status ? "Active" : "Disabled")}
+                </span>
+              </td>
+
+              <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-4">
+                  {!hasMultiple && (
+                    <div 
+                      onClick={() => toggleStatus(firstVariant.id || firstVariant._id)} 
+                      className={`relative inline-flex h-[28px] w-[85px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${firstVariant.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
+                    >
+                      <span className={`absolute text-[10px] font-bold text-white transition-opacity ${firstVariant.status ? "left-2 opacity-100" : "opacity-0"}`}>ACTIVE</span>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 shadow-sm z-10 ${firstVariant.status ? "translate-x-[61px]" : "translate-x-1"}`} />
+                      <span className={`absolute text-[10px] font-bold text-white transition-opacity ${firstVariant.status ? "opacity-0" : "right-2 opacity-100"}`}>OFF</span>
+                    </div>
+                  )}
+                  <span className="text-[11px] font-black text-slate-400">
+                    {isExpanded ? "HIDE DETAILS" : "VIEW DETAILS"}
+                  </span>
+                </div>
+              </td>
+            </tr>
+
+            {/* EXPANDED CONTENT */}
+            {isExpanded && (
+              <tr className="bg-slate-50/50">
+                <td colSpan="4" className="py-4 px-12 border-l-4 border-indigo-600">
+                  <div className="flex flex-col gap-3 py-2">
+                    {group.variants.map((variant) => (
+                      <div key={variant.id || variant._id} className="flex items-center gap-6 p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        
+                        <div className="w-[80px] h-[50px] bg-slate-100 rounded border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                          {variant.imageUrl || (variant.carImages && variant.carImages[0]?.imageUrl) ? (
+                            <img 
+                              src={variant.imageUrl || variant.carImages[0].imageUrl} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <span className="text-[9px] text-slate-400 font-bold uppercase">No Image</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1">
+                          <p className="text-[13px] font-bold text-slate-700">{variant.name}</p>
+                          {variant.isCarSpecific && (
+                             <p className="text-[11px] text-indigo-500 font-bold uppercase tracking-tighter">Car Specific Variant</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                           {/* VARIANT STATUS TOGGLE WITH TEXT */}
+                           <div 
+                             onClick={() => toggleStatus(variant.id || variant._id)} 
+                             className={`relative inline-flex h-[26px] w-[80px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${variant.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
+                           >
+                              <span className={`absolute text-[9px] font-bold text-white transition-opacity ${variant.status ? "left-2 opacity-100" : "opacity-0"}`}>ACTIVE</span>
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 z-10 ${variant.status ? "translate-x-[58px]" : "translate-x-1"}`} />
+                              <span className={`absolute text-[9px] font-bold text-white transition-opacity ${variant.status ? "opacity-0" : "right-2 opacity-100"}`}>OFF</span>
+                           </div>
+
+                           <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
+                              <button onClick={() => openEditModal(variant)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                              </button>
+                              <button onClick={() => openCloneModal(variant)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                              </button>
+                              <button onClick={() => openDeleteModal(variant)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                           </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </td>
               </tr>
-            </thead>
-
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr><td colSpan="4" className="py-12 text-center text-gray-500">Loading banners...</td></tr>
-              ) : banners.length === 0 ? (
-                <tr><td colSpan="4" className="py-12 text-center text-gray-500 font-medium">No banners found. Start by adding a new banner!</td></tr>
-              ) : (
-                banners.map((group) => {
-                  const hasMultipleVariants = group.variants.length > 1;
-                  const isExpanded = expandedGroups[group.bannerId];
-                  const firstBanner = group.variants[0];
-
-                  return (
-                    <React.Fragment key={group.bannerId}>
-
-                      {/* ========================================== */}
-                      {/* 1. SINGLE VARIANT ROW */}
-                      {/* ========================================== */}
-                      {!hasMultipleVariants && (
-                        <tr className="hover:bg-slate-50 transition-colors bg-white">
-                          {/* Image Column */}
-                          <td className="py-4 px-6 w-[120px]">
-                            <div className="w-[60px] h-[40px] bg-white rounded border border-gray-200 overflow-hidden flex items-center justify-center shadow-sm">
-                              {firstBanner.isCarSpecific && firstBanner.carImages?.length > 0 ? (
-                                <ImageWithLoading src={firstBanner.carImages[0].imageUrl} alt={firstBanner.name} className="w-full h-full object-cover" />
-                              ) : firstBanner.imageUrl ? (
-                                <ImageWithLoading src={firstBanner.imageUrl} alt={firstBanner.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[10px] text-gray-400">No Img</span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Banner Name Column */}
-                          <td className="py-4 px-6 min-w-[250px]">
-                            <div className="flex flex-col gap-2">
-                              <span className="text-[14px] font-bold text-slate-800">{firstBanner.name}</span>
-                              {firstBanner.isCarSpecific && firstBanner.carImages && firstBanner.carImages.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {firstBanner.carImages.map((car, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 p-1 pr-2.5 bg-white border border-gray-200 rounded-lg shadow-sm cursor-default" title={`Banner for ${car.carName}`}>
-                                      <div className="w-7 h-7 bg-white rounded overflow-hidden border border-gray-100 flex-shrink-0">
-                                        <img src={car.imageUrl} alt={car.carName} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
-                                      </div>
-                                      <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{car.carName}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Status Column */}
-                          <td className="py-4 px-6">
-                            <span className="text-[14px] font-medium text-slate-600">
-                              {firstBanner.status ? "Active" : "Disabled"}
-                            </span>
-                          </td>
-
-                          {/* Action Column */}
-                          <td className="py-4 px-6 flex items-center gap-6">
-                            <div onClick={() => toggleStatus(firstBanner.id || firstBanner._id)} className={`relative inline-flex h-[28px] w-[85px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${firstBanner.status ? "bg-[#00B050]" : "bg-[#990000]"}`}>
-                              <span className={`absolute text-[11px] font-medium text-white transition-opacity ${firstBanner.status ? "left-2.5 opacity-100" : "opacity-0"}`}>Active</span>
-                              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ease-in-out z-10 ${firstBanner.status ? "translate-x-[61px]" : "translate-x-1"}`} />
-                              <span className={`absolute text-[11px] font-medium text-white transition-opacity ${firstBanner.status ? "opacity-0" : "right-2 opacity-100"}`}>Disabled</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <button onClick={() => openEditModal(firstBanner)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
-                              <button onClick={() => openCloneModal(firstBanner)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Clone"><Copy size={20} /></button>
-                              <button onClick={() => openDeleteModal(firstBanner)} className="text-gray-400 hover:text-red-600 transition-colors" title="Delete"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-
-                      {/* ========================================== */}
-                      {/* 2. MULTIPLE VARIANTS (GROUP HEADER + ROWS) */}
-                      {/* ========================================== */}
-                      {hasMultipleVariants && (
-                        <>
-                          {/* GROUP HEADER (Strictly follows the Grid) 
-                              - Col 1: Empty (Leaves Image column blank)
-                              - Col 2: Group Title & Badge (Aligns under Banner Name)
-                              - Col 3: Empty
-                              - Col 4: Empty
-                          */}
-                          <tr
-                            className={`border-y border-gray-200 transition-colors cursor-pointer select-none ${isExpanded ? 'bg-indigo-50/40' : 'bg-white hover:bg-slate-50'}`}
-                            onClick={() => setExpandedGroups(prev => ({ ...prev, [group.bannerId]: !prev[group.bannerId] }))}
-                          >
-                            {/* 1. Empty Image Column */}
-                            <td className="py-4 px-6 w-[120px]"></td>
-
-                            {/* 2. Banner Name Column */}
-                            <td className="py-4 px-6 min-w-[250px]">
-                              <div className="flex items-center gap-3 group">
-                                {/* Animated Chevron Icon */}
-                                <div className={`text-slate-400 group-hover:text-[#0A3D81] transition-transform duration-300 ${isExpanded ? "rotate-90" : "rotate-0"}`}>
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                  </svg>
-                                </div>
-
-                                <span className="font-extrabold text-slate-800 text-[15px]">
-                                  {BANNER_MAPPING.find(b => b.id === group.bannerId)?.name || group.bannerId}
-                                  <span className="font-normal text-slate-400 text-[13px] ml-1.5">(Category)</span>
-                                </span>
-
-                                <span className="ml-2 text-[11px] bg-white text-[#0A3D81] font-bold px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-                                  {group.variants.length} Variants
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* 3. Empty Status Column */}
-                            <td className="py-4 px-6"></td>
-
-                            {/* 4. Empty Action Column */}
-                            <td className="py-4 px-6"></td>
-                          </tr>
-
-                          {/* VARIANTS LIST */}
-                          {isExpanded && group.variants.map((banner) => {
-                            return (
-                              <tr
-                                key={banner._id || banner.id}
-                                className="bg-blue-50/40 border-l-4 border-blue-300 hover:bg-blue-50/70 transition-all duration-200"
-                              >
-                                {/* Image Column */}
-                                <td className="py-4 px-6 w-[120px]">
-                                  <div className="w-[60px] h-[40px] bg-white rounded border border-gray-200 overflow-hidden flex items-center justify-center shadow-sm">
-                                    {banner.isCarSpecific && banner.carImages?.length > 0 ? (
-                                      <ImageWithLoading src={banner.carImages[0].imageUrl} alt={banner.name} className="w-full h-full object-cover" />
-                                    ) : banner.imageUrl ? (
-                                      <ImageWithLoading src={banner.imageUrl} alt={banner.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-[10px] text-gray-400">No Img</span>
-                                    )}
-                                  </div>
-                                </td>
-
-                                {/* Name Column */}
-                                <td className="py-4 px-6 min-w-[250px]">
-                                  <div className="flex flex-col gap-2">
-                                    <span className="text-[14px] font-medium text-slate-800">{banner.name}</span>
-                                    {banner.isCarSpecific && banner.carImages && banner.carImages.length > 0 && (
-                                      <div className="flex flex-wrap gap-2 mt-1">
-                                        {banner.carImages.map((car, idx) => (
-                                          <div key={idx} className="flex items-center gap-2 p-1 pr-2.5 bg-white border border-gray-200 rounded-lg shadow-sm cursor-default" title={`Banner for ${car.carName}`}>
-                                            <div className="w-7 h-7 bg-white rounded overflow-hidden border border-gray-100 flex-shrink-0">
-                                              <img src={car.imageUrl} alt={car.carName} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
-                                            </div>
-                                            <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{car.carName}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-
-                                {/* Status Column */}
-                                <td className="py-4 px-6">
-                                  <span className="text-[14px] font-medium text-slate-600">
-                                    {banner.status ? "Active" : "Disabled"}
-                                  </span>
-                                </td>
-
-                                {/* Actions Column (Toggle + Icons) */}
-                                <td className="py-4 px-6 flex items-center gap-6">
-                                  <div onClick={() => toggleStatus(banner.id || banner._id)} className={`relative inline-flex h-[28px] w-[85px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${banner.status ? "bg-[#00B050]" : "bg-[#990000]"}`}>
-                                    <span className={`absolute text-[11px] font-medium text-white transition-opacity ${banner.status ? "left-2.5 opacity-100" : "opacity-0"}`}>Active</span>
-                                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ease-in-out z-10 ${banner.status ? "translate-x-[61px]" : "translate-x-1"}`} />
-                                    <span className={`absolute text-[11px] font-medium text-white transition-opacity ${banner.status ? "opacity-0" : "right-2 opacity-100"}`}>Disabled</span>
-                                  </div>
-
-                                  <div className="flex items-center gap-3">
-                                    <button onClick={() => openEditModal(banner)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button onClick={() => openCloneModal(banner)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Clone">
-                                      <Copy size={20} />
-                                    </button>
-                                    <button onClick={() => openDeleteModal(banner)} className="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </>
-                      )}
-
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+            )}
+          </React.Fragment>
+        );
+      })
+    )}
+  </tbody>
+</table>
         </div>
         {/* Clone Confirmation Modal Overlay */}
         {isCloneModalOpen && (
@@ -789,7 +722,6 @@ const DashboardBanner = () => {
               <p className="text-sm text-slate-500 mb-6 font-medium">
                 You are duplicating <strong className="text-slate-800">{bannerToClone?.name}</strong>. Please enter a name for the new banner.
               </p>
-
               <div className="mb-6">
                 <label className="block text-sm font-bold text-gray-700 mb-2">New Banner Name</label>
                 <input

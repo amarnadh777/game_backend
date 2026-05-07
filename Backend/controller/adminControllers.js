@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/adminModel");
 const getDateRange = require("../utils/utils");
 const crypto = require('crypto');
+const brevoSendMail = require("../helper/sendEmailBrevo")
 exports.analytics = async (req, res) => {
   try {
     // Dates for "Today vs Yesterday" growth calculations
@@ -672,6 +673,117 @@ exports.creatAdmin = async (req, res) => {
     });
   }
 }
+
+
+exports.createAdminWithTempPassword = async (req, res) => {
+  try {
+    const { email, userName, fullname } = req.body;
+
+    // 1. Validate fields
+    if (!email || !userName || !fullname) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, username and fullname are required",
+      });
+    }
+
+    // 2. Check existing admin
+    const existingAdmin = await Admin.findOne({
+      $or: [{ email }, { userName }],
+    });
+
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin with this email or username already exists",
+      });
+    }
+
+    // 3. Generate temporary password
+    const tempPassword = crypto.randomBytes(4).toString("hex");
+
+    // 4. Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+
+    // 5. Create admin
+    const newAdmin = new Admin({
+      email,
+      userName,
+      fullname,
+      password: hashedPassword,
+      isTempPassword: true,
+    });
+
+    await newAdmin.save();
+    const loginUrl = `${process.env.ADMIN_PANEL_URL}`;
+console.log("Admin Panel URL:", loginUrl, newAdmin);
+    // 6. Send email
+  const seneMaillog = await brevoSendMail({
+  to: email,
+  subject: "Your Admin Account Created",
+  html: `
+    <h2>Welcome ${fullname}</h2>
+
+    <p>Your admin account has been created successfully.</p>
+
+    <p>
+      <strong>Username:</strong> ${userName}
+    </p>
+
+    <p>
+      <strong>Temporary Password:</strong> ${tempPassword}
+    </p>
+
+    <p>
+      <a 
+        href="${loginUrl}"
+        style="
+          background:#004B8D;
+          color:white;
+          padding:10px 18px;
+          text-decoration:none;
+          border-radius:6px;
+          display:inline-block;
+          margin-top:10px;
+        "
+      >
+        Login Now
+      </a>
+    </p>
+
+    <p>
+      Or open this URL:
+      <br />
+      ${loginUrl}
+    </p>
+
+    <p>Please login and change your password immediately.</p>
+  `,
+});
+    
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin created and temporary password sent to email",
+      data: {
+        id: newAdmin._id,
+        email: newAdmin.email,
+        userName: newAdmin.userName,
+        fullname: newAdmin.fullname,
+        isActive: newAdmin.isActive
+      },
+    });
+
+  } catch (error) {
+    console.error("Create Admin Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 exports.getAllAdminList = async (req, res) => {
 

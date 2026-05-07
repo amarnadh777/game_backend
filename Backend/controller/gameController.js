@@ -397,9 +397,29 @@ exports.getGameLeaderBord = async (req, res) => {
           { lastName: { $regex: searchQuery, $options: "i" } }
         ];
       } else if (filterBy === "phoneNumber") {
-        // IMPORTANT: Escape the '+' sign so it doesn't break the regex
-        const safeQuery = searchQuery.replace(/\+/g, "\\+");
-        matchStage.phoneNumber = { $regex: safeQuery, $options: "i" };
+        // Remove spaces so searching "+973 123" or "+973123" works the same
+        const cleanQuery = searchQuery.replace(/\s+/g, '');
+        const safeQuery = cleanQuery.replace(/\+/g, "\\+");
+        
+        matchStage.$or = [
+          { phoneNumber: { $regex: safeQuery, $options: "i" } },
+          { phoneCode: { $regex: safeQuery, $options: "i" } },
+          // Concatenate phoneCode and phoneNumber to allow searching the full string
+          {
+            $expr: {
+              $regexMatch: {
+                input: { 
+                  $concat: [
+                    { $ifNull: ["$phoneCode", ""] }, 
+                    { $ifNull: ["$phoneNumber", ""] }
+                  ] 
+                },
+                regex: safeQuery,
+                options: "i"
+              }
+            }
+          }
+        ];
       }
     }
 
@@ -442,7 +462,7 @@ exports.getGameLeaderBord = async (req, res) => {
       { $match: matchStage },
       {
         $lookup: {
-          from: "gamesessions", // Double check that this matches your actual collection name in MongoDB!
+          from: "gamesessions", 
           localField: "_id",
           foreignField: "userId",
           pipeline: [

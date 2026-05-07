@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import ExportModal from '../components/ExportModal';
 import toast from 'react-hot-toast';
 import { Copy } from 'lucide-react';
+import axiosInstance from '../api/axios';
 // --- IMAGE LOADER COMPONENT ---
 const ImageWithLoading = ({ src, alt, className }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -175,8 +176,8 @@ const DashboardBanner = () => {
 
   const handleCloneBanner = async (bannerId) => {
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/banner/clone/${bannerId}`
+      const response = await axiosInstance.post(
+        `$/banner/clone/${bannerId}`
       );
 
       if (response.status === 201) {
@@ -215,8 +216,8 @@ const DashboardBanner = () => {
       // Get the correct ID whether your DB uses _id or id
       const idToClone = bannerToClone.id || bannerToClone._id;
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/banner/clone/${idToClone}`,
+      const response = await axiosInstance.post(
+        `/banner/clone/${idToClone}`,
         { name: cloneName } // Send the new name to the backend!
       );
 
@@ -237,7 +238,7 @@ const DashboardBanner = () => {
   const fetchBanners = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/banner/admin-banners?page=${currentPage}&limit=${itemsPerPage}&search=${searchQuery}`);
+      const response = await axiosInstance.get(`/banner/admin-banners?page=${currentPage}&limit=${itemsPerPage}&search=${searchQuery}`);
       if (response.status === 200) {
         const formattedBanners = response.data.banners.map(group => ({
 
@@ -301,7 +302,7 @@ const DashboardBanner = () => {
     if (!deletingBanner) return;
     setIsDeleting(true);
     try {
-      const response = await axios.delete(`${import.meta.env.VITE_API_URL}/banner/delete/${deletingBanner.id}`);
+      const response = await axiosInstance.delete(`/banner/delete/${deletingBanner.id}`);
       if (response.status === 200) {
         toast.success("Banner deleted successfully.");
         closeDeleteModal();
@@ -322,9 +323,7 @@ const DashboardBanner = () => {
 
     try {
 
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/banner/toggle-status/${id}`
-      );
+      await axiosInstance.patch(`/banner/toggle-status/${id}`);
 
       // 🔥 refetch updated banners
       fetchBanners();
@@ -509,7 +508,7 @@ const DashboardBanner = () => {
     // ==========================================
     try {
       if (editingId) {
-        const response = await axios.put(`${import.meta.env.VITE_API_URL}/banner/update/${editingId}`, submitData, {
+        const response = await axiosInstance.put(`${import.meta.env.VITE_API_URL}/banner/update/${editingId}`, submitData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         if (response.status === 200) {
@@ -518,11 +517,10 @@ const DashboardBanner = () => {
           closeModal();
         } else toast.error("Failed to update banner.");
       } else {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/banner/upload`, {
-          method: 'POST',
-          body: submitData,
+        const response = await axiosInstance.post(`${import.meta.env.VITE_API_URL}/banner/upload`, submitData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
-        if (response.ok) {
+        if (response.status === 200 || response.data.success) {
           toast.success("Banner uploaded successfully!");
           fetchBanners();
           closeModal();

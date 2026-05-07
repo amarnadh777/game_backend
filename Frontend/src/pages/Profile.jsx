@@ -69,7 +69,7 @@ const Profile = () => {
 
       // 3. Include fullName in the payload
       const payload = {
-        fullname: profile.fullName,
+        fullName: profile.fullName,
         userName: profile.userName,
         email: profile.email,
       };
@@ -208,7 +208,7 @@ const Profile = () => {
                 )}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Password must be at least 8 characters long.</p>
+            {/* <p className="text-xs text-slate-500 mt-2">Password must be at least 8 characters long.</p> */}
           </div>
 
           {/* Actions */}

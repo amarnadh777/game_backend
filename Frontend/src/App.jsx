@@ -12,6 +12,8 @@ import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute'; // Import the new component
 import { Toaster } from 'react-hot-toast';
 import Profile from './pages/Profile';
+import ForgotPassword from './pages/ForgotPassword';
+import AdminManagement from './pages/AdminManagement';
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
           
           {/* Public Route (No Layout, No Protection) */}
           <Route path="/login" element={<Login />} />
+ <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected Routes Wrapper */}
           <Route element={<ProtectedRoute />}>
@@ -35,7 +38,9 @@ function App() {
               <Route path="users" element={<UserDetails />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="admin-management" element={<AdminManagement />} />
 
+             
             </Route>
 
            </Route>

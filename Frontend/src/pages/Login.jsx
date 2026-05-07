@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Added Link here
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import logo from '../assets/kanoologo.png';
@@ -25,7 +25,6 @@ const Login = () => {
 
     try {
       // Send both as email and username so the backend's $or logic picks it up correctly
-      // Replace '/api/admin/login' with your exact backend route
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/login`, {
         email: identifier,
         username: identifier, 
@@ -83,7 +82,7 @@ const Login = () => {
               Email or Username
             </label>
             <input
-              type="text" // Changed to text so they can type a username too
+              type="text" 
               required
               placeholder="Enter your email or username"
               value={identifier}
@@ -98,7 +97,13 @@ const Login = () => {
               <label className="text-[13px] font-bold text-gray-700">
                 Password
               </label>
-   
+              {/* NEW: Forgot Password Link */}
+              <Link 
+                to="/forgot-password" 
+                className="text-[12px] font-semibold text-[#0A3D81] hover:text-[#11087C] hover:underline transition-colors"
+              >
+                Forgot Password?
+              </Link>
             </div>
             <input
               type="password"

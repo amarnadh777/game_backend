@@ -20,6 +20,10 @@ const Header = ({ toggleSidebar }) => {
     navigate('/profile');    // Navigate to the profile update page
   };
 
+  const adminData = JSON.parse(localStorage.getItem('adminUser'));
+  
+  
+
   return (
     <header className="w-full h-[100px] bg-[#11087C] px-6 py-4 flex items-center justify-between z-50">
       
@@ -54,7 +58,7 @@ const Header = ({ toggleSidebar }) => {
           <div className="absolute right-0 top-full mt-4 w-48 bg-white rounded-xl shadow-2xl py-2 z-50 border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
             
             <div className="px-4 py-2 border-b border-slate-100 mb-1">
-              <p className="text-sm font-semibold text-slate-800">Admin User</p>
+              <p className="text-sm font-semibold text-slate-800">{adminData ? adminData?.fullname : "Admin User"}</p>
             </div>
 
             {/* NEW: Update Profile Button */}

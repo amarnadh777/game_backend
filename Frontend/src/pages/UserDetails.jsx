@@ -1,15 +1,15 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import ExportModal from "../components/ExportModal";
-import { ArrowUp, ArrowUpDown } from 'lucide-react';
-import {getCountryCallingCode} from 'libphonenumber-js'
+import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { getCountryCallingCode } from 'libphonenumber-js'
 
 const UserDetails = () => {
   const [users, setUsers] = useState([]);
   const [filterBy, setFilterBy] = useState("");
-  const [startDate, setStartDate] = useState(""); 
-  const [endDate, setEndDate] = useState("");     
-  const [appliedStartDate, setAppliedStartDate] = useState(""); 
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
   const [appliedEndDate, setAppliedEndDate] = useState("");
   const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,7 +60,8 @@ const UserDetails = () => {
           phoneNumber: user.phoneNumber,
           finishedAt: user.completedAt,
           registerDate: user.registerDate,
-          phoneCode: user?.phoneCode
+          phoneCode: user?.phoneCode,
+          vehicle: user?.vehicle,
         }));
 
         setUsers(transformData);
@@ -81,19 +82,33 @@ const UserDetails = () => {
     return () => clearTimeout(delayDebounceFn);
 
   }, [currentPage, filterBy, searchQuery, appliedStartDate, appliedEndDate, sortConfig]);
-const requestSort = (key) => {
-  if (key === 'speed') {
-    setSortConfig({ key, direction: 'desc' });
-  } else if (key === 'finished') {
-    setSortConfig({ key, direction: 'asc' });
-  }
-  setCurrentPage(1);
-};
+
+  // UPDATED: Dynamically toggle between 'asc' and 'desc'
+  const requestSort = (key) => {
+    let direction = 'asc';
+
+    // If clicking the same column, toggle the direction
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to page 1 when sorting changes
+  };
+
+  // UPDATED: Show ArrowUp for Ascending, ArrowDown for Descending
   const SortIcon = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) {
+      // Not actively sorting this column
       return <ArrowUpDown className="w-[14px] h-[14px] ml-1 text-gray-400" />;
     }
-    return <ArrowUp className="w-[14px] h-[14px] ml-1 text-[#0A3D81]" />;
+
+    // Actively sorting this column
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-[14px] h-[14px] ml-1 text-[#0A3D81]" />;
+    } else {
+      return <ArrowDown className="w-[14px] h-[14px] ml-1 text-[#0A3D81]" />;
+    }
   };
 
   const handlePrevPage = () => {
@@ -112,6 +127,13 @@ const requestSort = (key) => {
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  // NEW HELPER: Converts YYYY-MM-DD to DD/MM/YYYY for the button
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
   };
 
   const formatTime = (dateString) => {
@@ -161,142 +183,47 @@ const requestSort = (key) => {
   };
 
   const normalizedCountry = selectedUser?.country
-  ?.toLowerCase()
-  .replace(/\s/g, "");
+    ?.toLowerCase()
+    .replace(/\s/g, "");
 
-const rawCode = selectedUser?.phoneCode?.trim();
-const countryDialCodeMap = {
-  afghanistan: "93",
-  albania: "355",
-  algeria: "213",
-  argentina: "54",
-  armenia: "374",
-  australia: "61",
-  austria: "43",
-  azerbaijan: "994",
-  bahrain: "973",
-  bangladesh: "880",
-  belarus: "375",
-  belgium: "32",
-  bolivia: "591",
-  brazil: "55",
-  bulgaria: "359",
-  cambodia: "855",
-  cameroon: "237",
-  canada: "1",
-  chile: "56",
-  china: "86",
-  colombia: "57",
-  croatia: "385",
-  cuba: "53",
-  cyprus: "357",
-  czechrepublic: "420",
-  denmark: "45",
-  dominicanrepublic: "1",
-  ecuador: "593",
-  egypt: "20",
-  estonia: "372",
-  ethiopia: "251",
-  finland: "358",
-  france: "33",
-  georgia: "995",
-  germany: "49",
-  ghana: "233",
-  greece: "30",
-  hungary: "36",
-  iceland: "354",
-  india: "91",
-  indonesia: "62",
-  iran: "98",
-  iraq: "964",
-  ireland: "353",
-  israel: "972",
-  italy: "39",
-  jamaica: "1",
-  japan: "81",
-  jordan: "962",
-  kazakhstan: "7",
-  kenya: "254",
-  kuwait: "965",
-  kyrgyzstan: "996",
-  laos: "856",
-  latvia: "371",
-  lebanon: "961",
-  lithuania: "370",
-  luxembourg: "352",
-  malaysia: "60",
-  maldives: "960",
-  mexico: "52",
-  moldova: "373",
-  mongolia: "976",
-  morocco: "212",
-  myanmar: "95",
-  nepal: "977",
-  netherlands: "31",
-  newzealand: "64",
-  nigeria: "234",
-  northkorea: "850",
-  norway: "47",
-  oman: "968",
-  pakistan: "92",
-  palestine: "970",
-  panama: "507",
-  peru: "51",
-  philippines: "63",
-  poland: "48",
-  portugal: "351",
-  qatar: "974",
-  romania: "40",
-  russia: "7",
-  saudiarabia: "966",
-  serbia: "381",
-  singapore: "65",
-  slovakia: "421",
-  slovenia: "386",
-  southafrica: "27",
-  southkorea: "82",
-  spain: "34",
-  srilanka: "94",
-  sudan: "249",
-  sweden: "46",
-  switzerland: "41",
-  syria: "963",
-  taiwan: "886",
-  tajikistan: "992",
-  tanzania: "255",
-  thailand: "66",
-  tunisia: "216",
-  turkey: "90",
-  uganda: "256",
-  uk: "44",
-  unitedkingdom: "44",
-  usa: "1",
-  unitedstates: "1",
-  ukraine: "380",
-  unitedarabemirates: "971",
-  uae: "971",
-  uruguay: "598",
-  uzbekistan: "998",
-  venezuela: "58",
-  vietnam: "84",
-  yemen: "967",
-  zambia: "260",
-  zimbabwe: "263"
-  ,in:"91"
-};
-const cleanedCode = selectedUser?.phoneCode
-  ?.replace(/\D/g, "")   // remove non-digits
-  ?.trim();              // remove spaces
+  const rawCode = selectedUser?.phoneCode?.trim();
+  const countryDialCodeMap = {
+    afghanistan: "93", albania: "355", algeria: "213", argentina: "54", armenia: "374", australia: "61", austria: "43",
+    azerbaijan: "994", bahrain: "973", bangladesh: "880", belarus: "375", belgium: "32", bolivia: "591", brazil: "55",
+    bulgaria: "359", cambodia: "855", cameroon: "237", canada: "1", chile: "56", china: "86", colombia: "57",
+    croatia: "385", cuba: "53", cyprus: "357", czechrepublic: "420", denmark: "45", dominicanrepublic: "1",
+    ecuador: "593", egypt: "20", estonia: "372", ethiopia: "251", finland: "358", france: "33", georgia: "995",
+    germany: "49", ghana: "233", greece: "30", hungary: "36", iceland: "354", india: "91", indonesia: "62",
+    iran: "98", iraq: "964", ireland: "353", israel: "972", italy: "39", jamaica: "1", japan: "81",
+    jordan: "962", kazakhstan: "7", kenya: "254", kuwait: "965", kyrgyzstan: "996", laos: "856", latvia: "371",
+    lebanon: "961", lithuania: "370", luxembourg: "352", malaysia: "60", maldives: "960", mexico: "52",
+    moldova: "373", mongolia: "976", morocco: "212", myanmar: "95", nepal: "977", netherlands: "31",
+    newzealand: "64", nigeria: "234", northkorea: "850", norway: "47", oman: "968", pakistan: "92",
+    palestine: "970", panama: "507", peru: "51", philippines: "63", poland: "48", portugal: "351",
+    qatar: "974", romania: "40", russia: "7", saudiarabia: "966", serbia: "381", singapore: "65",
+    slovakia: "421", slovenia: "386", southafrica: "27", southkorea: "82", spain: "34", srilanka: "94",
+    sudan: "249", sweden: "46", switzerland: "41", syria: "963", taiwan: "886", tajikistan: "992",
+    tanzania: "255", thailand: "66", tunisia: "216", turkey: "90", uganda: "256", uk: "44",
+    unitedkingdom: "44", usa: "1", unitedstates: "1", ukraine: "380", unitedarabemirates: "971",
+    uae: "971", uruguay: "598", uzbekistan: "998", venezuela: "58", vietnam: "84", yemen: "967",
+    zambia: "260", zimbabwe: "263", in: "91"
+  };
 
-const phoneCode =
-  cleanedCode && cleanedCode.length > 0
-    ? cleanedCode                     // use backend
-    : countryDialCodeMap[normalizedCountry] || ""; // fallbac
+  const cleanedCode = selectedUser?.phoneCode
+    ?.replace(/\D/g, "")
+    ?.trim();
 
-console.log("country",selectedUser?.country);
-console.log("phoneCode",selectedUser?.phoneCode);
-
-  
+  const phoneCode =
+    cleanedCode && cleanedCode.length > 0
+      ? cleanedCode
+      : countryDialCodeMap[normalizedCountry] || "";
+  const CAR_NAME_MAP = {
+    "icaur_v27_royal": "Icaur V27 Royal",
+    "lexus_lx_600_urban": "Lexus LX 600 Urban",
+    "jetour_g700": "Jetour G700",
+    "deepal_g318": "Deepal G318",
+    "toyota_land_cruiser_gx_r_3_5l": "Toyota Land Cruiser GX-R 3.5L"
+  };
   return (
     <div className="w-full min-h-screen p-6 md:p-8 bg-[#EBF5FF] flex flex-col gap-4">
       <ExportModal isOpen={isCalanderModleOpen} onClose={() => { setIsCalanderModelOpen(false); }} />
@@ -308,7 +235,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
       <div className="bg-white rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden border border-white">
 
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-[18px] font-bold text-gray-900">LeaderBoard</h2>
+          <h2 className="text-[18px] font-bold text-gray-900">Leaderboard</h2>
 
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -319,7 +246,10 @@ console.log("phoneCode",selectedUser?.phoneCode);
                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                {startDate && endDate ? `${startDate} to ${endDate}` : "Filter by Date"}
+                {/* UPDATED: Uses the applied dates and formats them to DD/MM/YYYY */}
+                {appliedStartDate && appliedEndDate
+                  ? `${formatDateForDisplay(appliedStartDate)} to ${formatDateForDisplay(appliedEndDate)}`
+                  : "Filter by Date"}
               </button>
 
               {isDateFilterOpen && (
@@ -380,12 +310,25 @@ console.log("phoneCode",selectedUser?.phoneCode);
 
             {filterBy && (
               <input
-                type="text"
-                placeholder={`Search by ${filterBy}...`}
+                // 1. Change keyboard type for mobile users
+                type={filterBy === 'phoneNumber' ? "tel" : "text"}
+
+                // 2. Make the placeholder look better
+                placeholder={filterBy === 'phoneNumber' ? "Search phone number..." : `Search by ${filterBy}...`}
+
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                  // 3. Only allow numbers and the '+' sign if filtering by phone
+                  if (filterBy === 'phoneNumber') {
+                    const val = e.target.value;
+                    if (val === '' || /^[0-9+]+$/.test(val)) {
+                      setSearchQuery(val);
+                      setCurrentPage(1);
+                    }
+                  } else {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }
                 }}
                 className="bg-gray-50 border border-gray-200 text-gray-600 text-sm py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 w-48"
               />
@@ -405,6 +348,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
                 <option value="email">Email</option>
                 <option value="name">Player Name</option>
                 <option value="country">Country</option>
+                <option value="phoneNumber">Phone Number</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -431,7 +375,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
               <tr className="bg-[#F3F4F6]">
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-16">Rank</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Player</th>
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Email</th>
+                <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Registered Date</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Country</th>
 
                 <th
@@ -456,7 +400,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
                   <td colSpan="8" className="py-12 text-center text-gray-500">Loading users...</td>
@@ -466,42 +410,50 @@ console.log("phoneCode",selectedUser?.phoneCode);
                   <td colSpan="8" className="py-12 text-center text-gray-500 font-medium">No users found.</td>
                 </tr>
               ) : (
-                users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 px-6 text-[14px] text-gray-500">{user.rank}</td>
-                    <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.player}</td>
-                    <td className="py-4 px-6 text-[14px] text-gray-600">{user.email}</td>
-                    <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.country}</td>
-                    <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.speed}</td>
-                    <td className="py-4 px-6 text-[14px] text-gray-600">{formatTimeTaken(user.finished)}</td>
-                    <td className="py-4 px-6 text-[14px] text-gray-600">Active</td>
+                users.map((user) => {
+                  return (
+                    <React.Fragment key={user.id}>
+                      {/* Main Row */}
+                      <tr className="hover:bg-gray-50 transition-colors cursor-pointer">
+                        <td className="py-4 px-6 text-[14px] text-gray-500">{user.rank}</td>
+                        <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.player}</td>
+                        <td className="py-4 px-6 text-[14px] text-gray-600">{formatDate(user.registerDate)}</td>
+                        <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.country}</td>
+                        <td className="py-4 px-6 text-[14px] font-medium text-gray-800">{user.speed}</td>
+                        <td className="py-4 px-6 text-[14px] text-gray-600">{formatTimeTaken(user.finished)}</td>
 
-                    <td className="py-4 px-6 flex items-center gap-3">
-                      <div
-                        onClick={() => toggleStatus(user.id, user.status)}
-                        className={`relative inline-flex h-[28px] w-[85px] items-center rounded-full cursor-pointer transition-colors ${user.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
-                      >
-                        <span className={`absolute text-[11px] font-medium text-white transition-opacity ${user.status ? "left-2.5 opacity-100" : "opacity-0"}`}>
-                          Active
-                        </span>
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ease-in-out z-10 ${user.status ? "translate-x-[61px]" : "translate-x-1"}`} />
-                        <span className={`absolute text-[11px] font-medium text-white transition-opacity ${user.status ? "opacity-0" : "right-2 opacity-100"}`}>
-                          Disabled
-                        </span>
-                      </div>
+                        <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                          {/* Status Toggle */}
+                          <div
+                            onClick={() => toggleStatus(user.id, user.status)}
+                            className={`relative inline-flex h-[28px] w-[85px] items-center rounded-full cursor-pointer transition-colors ${user.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
+                          >
+                            <span className={`absolute text-[11px] font-medium text-white transition-opacity ${user.status ? "left-2.5 opacity-100" : "opacity-0"}`}>
+                              Active
+                            </span>
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 ease-in-out z-10 ${user.status ? "translate-x-[61px]" : "translate-x-1"}`} />
+                            <span className={`absolute text-[11px] font-medium text-white transition-opacity ${user.status ? "opacity-0" : "right-2 opacity-100"}`}>
+                              Disabled
+                            </span>
+                          </div>
+                        </td>
 
-                      <button
-                        className="border border-gray-300 hover:bg-gray-100 text-gray-700 text-[13px] font-medium py-1 px-3 rounded-[6px] transition-all flex items-center gap-1"
-                        onClick={() => {
-                          setIsModelOpen(true);
-                          setSelectedUser(user);
-                        }}
-                      >
-                        View <span className="text-gray-400">&gt;</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <td className="py-4 px-6 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="border border-gray-300 hover:bg-gray-100 text-gray-700 text-[13px] font-medium py-1 px-3 rounded-[6px] transition-all flex items-center gap-1"
+                            onClick={() => {
+                              setIsModelOpen(true);
+                              setSelectedUser(user);
+                            }}
+                          >
+                            View Modal <span className="text-gray-400">&gt;</span>
+                          </button>
+                        </td>
+                      </tr>
+
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -528,11 +480,10 @@ console.log("phoneCode",selectedUser?.phoneCode);
                   <button
                     key={pageNumber}
                     onClick={() => setCurrentPage(pageNumber)}
-                    className={`min-w-[28px] h-[28px] rounded px-2 transition-colors text-[13px] ${
-                      currentPage === pageNumber
-                        ? "bg-[#0A3D81] text-white font-medium"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
+                    className={`min-w-[28px] h-[28px] rounded px-2 transition-colors text-[13px] ${currentPage === pageNumber
+                      ? "bg-[#0A3D81] text-white font-medium"
+                      : "text-gray-600 hover:bg-gray-100"
+                      }`}
                   >
                     {pageNumber}
                   </button>
@@ -605,13 +556,20 @@ console.log("phoneCode",selectedUser?.phoneCode);
                 <span className="text-[14px] font-medium text-gray-700 truncate" title={selectedUser?.email}>{selectedUser?.email}</span>
 
                 <span className="text-[14px] font-bold text-gray-900">Phone number</span>
-               <span className="text-[14px] font-medium text-gray-700">
-  {selectedUser?.phoneNumber
-    ? `${phoneCode ? '+' + phoneCode + ' ' : ''}${selectedUser.phoneNumber}`
-    : 'N/A'}
-</span>
+                <span className="text-[14px] font-medium text-gray-700">
+                  {selectedUser?.phoneNumber
+                    ? `${phoneCode ? '+' + phoneCode + ' ' : ''}${selectedUser.phoneNumber}`
+                    : 'N/A'}
+                </span>
                 <span className="text-[14px] font-bold text-gray-900">Finished</span>
                 <span className="text-[14px] font-medium text-gray-700">{formatTimeTaken(selectedUser?.finished)}</span>
+
+
+              </div>
+
+              <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
+                <span className="text-[14px] font-bold text-gray-900">Vehicle</span>
+                <span className="text-[14px] font-medium text-gray-700">{CAR_NAME_MAP[selectedUser?.vehicle] || "N/A"}</span>
               </div>
             </div>
 

@@ -1,12 +1,13 @@
     const router = require('express').Router();
     const gameController = require("../controller/gameController")
-    const authMiddleware = require("../middleware/authMiddleware")
+    const authMiddleware = require("../middleware/authMiddleware");
+const protectAdmin = require('../middleware/protectAdmin');
     
     router.post("/start",authMiddleware,  gameController.startGame)
     router.post("/finish",authMiddleware,gameController.finishGameDirect)
     router.post("/reset",gameController.restGame)
     router.get("/leaderboard",gameController.getActiveLeaderboard)
-    router.get("/admin/leaderboard",gameController.getGameLeaderBord)
+    router.get("/admin/leaderboard",protectAdmin,gameController.getGameLeaderBord)
     router.get("/leaderboard/download",gameController.dowloadLeaderBoard)
 
    

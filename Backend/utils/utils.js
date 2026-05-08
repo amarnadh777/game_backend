@@ -63,6 +63,17 @@ const getDateRange = (filter, customStart, customEnd) => {
             startDate.setHours(0, 0, 0, 0);
             break;
 
+            case "last_month":
+            // 1. Get the 1st day of the PREVIOUS month
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            startDate.setHours(0, 0, 0, 0);
+
+            // 2. Get the last day of the PREVIOUS month
+            // (Setting the day to '0' of the current month automatically grabs the exact last day of the previous month)
+            endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+
         case "custom":
             // Use the exact dates passed from the frontend
             if (!customStart || !customEnd) {

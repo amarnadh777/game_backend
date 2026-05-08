@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import axiosInstance from '../api/axios';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const Profile = () => {
           return;
         }
 
-        const response = await axios.get(`${API_BASE_URL}/admin/profile/${adminId}`);
+        const response = await axiosInstance.get(`/admin/profile/${adminId}`);
         
         if (response.data.success) {
           setProfile({
@@ -78,7 +79,7 @@ const Profile = () => {
         payload.password = profile.password;
       }
 
-      const response = await axios.put(`${API_BASE_URL}/admin/profile/edit/${adminId}`, payload);
+      const response = await axiosInstance.put(`/admin/profile/edit/${adminId}`, payload);
 
       if (response.data.success) {
         toast.success('Admin profile updated successfully!');

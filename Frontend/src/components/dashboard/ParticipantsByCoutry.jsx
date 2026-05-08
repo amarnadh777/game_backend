@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Note: Changed 'all_time' to 'all' to match your Dashboard's global values perfectly.
 const quickFilters = [
-  { label: 'All time', value: 'all' },
+  { label: 'All time', value: 'all_time' },
   { label: 'Today', value: 'today' },
   { label: 'This week', value: 'this_week' },
   { label: 'Last week', value: 'last_week' },
@@ -238,6 +238,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={false}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
+                  allowDecimals={false}
                 />
                 <Tooltip
                   cursor={{ fill: '#f3f4f6' }}

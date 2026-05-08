@@ -561,7 +561,7 @@ const UserDetails = () => {
               </div>
 
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Vehicle</span>
+                <span className="text-[14px] font-bold text-gray-900">Preferred Vehicle</span>
                 <span className="text-[14px] font-medium text-gray-700">{CAR_NAME_MAP[selectedUser?.vehicle] || "N/A"}</span>
               </div>
             </div>

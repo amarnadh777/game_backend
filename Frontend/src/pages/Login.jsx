@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import logo from '../assets/kanoologo.png';
+import axiosInstance from '../api/axios';
 
 const Login = () => {
   // Using 'identifier' to allow either email or username to match our backend logic
@@ -26,7 +27,7 @@ const Login = () => {
 
     try {
       // Send both as email and username so the backend's $or logic picks it up correctly
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/admin/login`, {
+      const response = await axiosInstance.post(`/admin/login`, {
         email: identifier,
         username: identifier, 
         password: password

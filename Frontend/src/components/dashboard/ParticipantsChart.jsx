@@ -225,6 +225,7 @@ const ParticipantsChart = ({ activeFilter: globalFilter, customRange: globalCust
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#9ca3af', fontSize: 12 }}
+                allowDecimals={false}
               />
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: 13 }}

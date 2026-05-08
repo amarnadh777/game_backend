@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip
 } from 'recharts';
-import axiosInstance from '../../api/axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import axiosInstance from '../../api/axios'; // Adjust path if needed
 
 const quickFilters = [
-  { label: 'All time', value: 'all' }, // Match 'all' with Dashboard value
+  { label: 'All time', value: 'all' }, 
   { label: 'Today', value: 'today' },
   { label: 'This week', value: 'this_week' },
   { label: 'Last week', value: 'last_week' },
@@ -24,7 +21,6 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Local state for the individual chart filter
   const [activeFilter, setActiveFilter] = useState(quickFilters[0]);
 
   const formatDateForDisplay = (dateString) => {
@@ -53,9 +49,6 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
     }
   };
 
-  // ==========================================
-  // SYNC WITH GLOBAL DASHBOARD FILTER
-  // ==========================================
   useEffect(() => {
     if (!globalFilter) return;
 
@@ -72,7 +65,6 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
         fetchGraphData('custom', gFrom, gTo);
       }
     } else {
-      // Find matching filter object for the local UI label
       const matchedFilter = quickFilters.find(f => f.value === globalFilter) || quickFilters[0];
       setActiveFilter(matchedFilter);
       setFromDate('');
@@ -81,9 +73,6 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
     }
   }, [globalFilter, globalCustomRange]);
 
-  // ==========================================
-  // LOCAL CLICK HANDLERS
-  // ==========================================
   const handleQuickSelect = (filterObj) => {
     setActiveFilter(filterObj);
     setShowFilter(false);
@@ -209,25 +198,38 @@ const TimeBarChart = ({ activeFilter: globalFilter, customRange: globalCustomRan
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} horizontal stroke="#e5e7eb" />
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+              
               <XAxis
                 dataKey="time"
-                axisLine={{ stroke: '#9ca3af' }}
+                axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#6b7280', fontSize: 12, dy: 10 }}
               />
+              
               <YAxis
-                axisLine={{ stroke: '#9ca3af' }}
+                allowDecimals={false} // Prevents decimals like 0.5, 1.5
+                axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#6b7280', fontSize: 12 }}
               />
+              
               <Tooltip
                 cursor={{ fill: '#f3f4f6' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 formatter={(val) => [`${val} Participants`, 'Count']}
               />
-              <Bar dataKey="participants" fill="#28B67A" radius={[2, 2, 0, 0]} barSize={32} />
+              
+              {/* Premium Styled Bar with Rounded Corners */}
+              <Bar 
+                dataKey="participants" 
+                fill="#28B67A" 
+                radius={[4, 4, 0, 0]} 
+                barSize={32} 
+              />
+              
             </BarChart>
           </ResponsiveContainer>
         )}

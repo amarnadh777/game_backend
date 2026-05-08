@@ -203,13 +203,13 @@ exports.analytics = async (req, res) => {
 exports.getParticipantsGraphData = async (req, res) => {
   try {
     const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
-    
+
     // 1. Get dates. (Assuming getDateRange returns local midnight-to-midnight Date objects)
     const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
 
     // Guard clause: If 'all' is selected and there's no start date, return empty or handle differently
     if (!startDate || !endDate) {
-       return res.status(400).json({ success: false, message: "Valid date range required" });
+      return res.status(400).json({ success: false, message: "Valid date range required" });
     }
 
     // 2. Get raw data from MongoDB grouped by exact Date
@@ -225,12 +225,12 @@ exports.getParticipantsGraphData = async (req, res) => {
           _id: {
             // FIXED: Added timezone to ensure it groups by your local day, not UTC
             // Change "Asia/Kolkata" to your actual timezone if you aren't in India
-            dateStr: { 
-              $dateToString: { 
-                format: "%Y-%m-%d", 
+            dateStr: {
+              $dateToString: {
+                format: "%Y-%m-%d",
                 date: "$completedAt",
-                timezone: "Asia/Kolkata" 
-              } 
+                timezone: "Asia/Kolkata"
+              }
             },
             userId: "$userId"
           }
@@ -262,11 +262,11 @@ exports.getParticipantsGraphData = async (req, res) => {
 
       // Create a nice label for the frontend graph
       const isWeekFilter = filter === 'this_week' || filter === 'last_week';
-      
+
       // If it's just "today", we can format it to say "Today" or show the hour
       let label = "";
       if (filter === 'today') {
-        label = "Today"; 
+        label = "Today";
       } else {
         label = isWeekFilter
           ? currentDate.toLocaleDateString('en-US', { weekday: 'short' })
@@ -296,147 +296,147 @@ exports.getParticipantsGraphData = async (req, res) => {
   }
 };
 
-  exports.getStatsCardsData = async (req, res) => {
-    try {
-      const { timeframe = 'all', from, to } = req.query;
+exports.getStatsCardsData = async (req, res) => {
+  try {
+    const { timeframe = 'all', from, to } = req.query;
 
-      // ==========================================
-      // 1. GET CURRENT DATES (Using your utility)
-      // ==========================================
-      let currentStart = null;
-      let currentEnd = null;
+    // ==========================================
+    // 1. GET CURRENT DATES (Using your utility)
+    // ==========================================
+    let currentStart = null;
+    let currentEnd = null;
 
-      if (timeframe !== 'all') {
-        const { startDate, endDate } = getDateRange(timeframe, from, to);
-        currentStart = startDate;
-        currentEnd = endDate;
-      }
+    if (timeframe !== 'all') {
+      const { startDate, endDate } = getDateRange(timeframe, from, to);
+      currentStart = startDate;
+      currentEnd = endDate;
+    }
 
-      // ==========================================
-      // 2. CALCULATE PREVIOUS DATES & TREND LABEL
-      // ==========================================
-      let prevStart = null;
-      let prevEnd = null;
-      let trendLabel = null; // NEW: Dynamic text for the frontend
+    // ==========================================
+    // 2. CALCULATE PREVIOUS DATES & TREND LABEL
+    // ==========================================
+    let prevStart = null;
+    let prevEnd = null;
+    let trendLabel = null; // NEW: Dynamic text for the frontend
 
-      if (timeframe === 'today') {
-        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
-        prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 1);
-        trendLabel = "vs yesterday";
-      } else if (timeframe === 'this_week') {
-        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
-        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-        trendLabel = "vs last week";
-      } else if (timeframe === 'last_week') {
-        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
-        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-        trendLabel = "vs previous week";
-      } else if (timeframe === 'this_month') {
-        prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
-        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-        trendLabel = "vs last month";
-      } else if (timeframe === 'last_month') {
-        prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
-        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-        trendLabel = "vs previous month";
-      }
-      // For 'all' and 'custom', prevStart/prevEnd stay null, and trendLabel stays null.
+    if (timeframe === 'today') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
+      prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 1);
+      trendLabel = "vs yesterday";
+    } else if (timeframe === 'this_week') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs last week";
+    } else if (timeframe === 'last_week') {
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs previous week";
+    } else if (timeframe === 'this_month') {
+      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs last month";
+    } else if (timeframe === 'last_month') {
+      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+      trendLabel = "vs previous month";
+    }
+    // For 'all' and 'custom', prevStart/prevEnd stay null, and trendLabel stays null.
 
-      // ==========================================
-      // 3. BUILD MONGODB FILTERS
-      // ==========================================
-      const buildMatch = (start, end, isSession = false) => {
-        if (!start || !end) return isSession ? { status: "COMPLETED" } : {};
-        const dateField = isSession ? "completedAt" : "createdAt";
-        return { ...(isSession && { status: "COMPLETED" }), [dateField]: { $gte: start, $lte: end } };
-      };
+    // ==========================================
+    // 3. BUILD MONGODB FILTERS
+    // ==========================================
+    const buildMatch = (start, end, isSession = false) => {
+      if (!start || !end) return isSession ? { status: "COMPLETED" } : {};
+      const dateField = isSession ? "completedAt" : "createdAt";
+      return { ...(isSession && { status: "COMPLETED" }), [dateField]: { $gte: start, $lte: end } };
+    };
 
-      const currentMatchUser = buildMatch(currentStart, currentEnd, false);
-      const currentMatchSession = buildMatch(currentStart, currentEnd, true);
+    const currentMatchUser = buildMatch(currentStart, currentEnd, false);
+    const currentMatchSession = buildMatch(currentStart, currentEnd, true);
 
-      // ==========================================
-      // 4. FETCH CURRENT DATA
-      // ==========================================
-      const [
-        totalUsers,
-        participantsAgg,
-        totalSessions,
-        vehicleAgg
-      ] = await Promise.all([
-        User.countDocuments(currentMatchUser),
-        GameSession.aggregate([{ $match: currentMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
-        GameSession.countDocuments(currentMatchSession),
+    // ==========================================
+    // 4. FETCH CURRENT DATA
+    // ==========================================
+    const [
+      totalUsers,
+      participantsAgg,
+      totalSessions,
+      vehicleAgg
+    ] = await Promise.all([
+      User.countDocuments(currentMatchUser),
+      GameSession.aggregate([{ $match: currentMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+      GameSession.countDocuments(currentMatchSession),
       GameSession.aggregate([
         { $match: { ...currentMatchSession, vehicle: { $exists: true, $ne: null } } },
-        { 
-          $group: { 
-            _id: "$vehicle", 
+        {
+          $group: {
+            _id: "$vehicle",
             count: { $sum: 1 },
             // NEW: Find the absolute fastest time recorded for this vehicle in this timeframe
-            bestTime: { $min: "$timeTaken" } 
-          } 
+            bestTime: { $min: "$timeTaken" }
+          }
         },
         // NEW: Sort by count FIRST (highest to lowest), then by bestTime SECOND (lowest/fastest to highest)
         { $sort: { count: -1, bestTime: 1 } },
         { $limit: 1 }
       ])
+    ]);
+
+    const totalParticipants = participantsAgg.length > 0 ? participantsAgg[0].count : 0;
+    const totalReplays = Math.max(0, totalSessions - totalParticipants);
+    const mostUsedVehicle = vehicleAgg.length > 0 ? vehicleAgg[0]._id : null;
+
+    // ==========================================
+    // 5. FETCH PREVIOUS DATA & CALCULATE GROWTH
+    // ==========================================
+    // Default to null so frontend hides the arrow for Custom/All Time
+    let registrationGrowth = null, participantGrowth = null, replayGrowth = null;
+
+    const calculatePercentage = (curr, prev) => {
+      if (prev === 0) return curr > 0 ? 100 : 0;
+      return Number((((curr - prev) / prev) * 100).toFixed(1));
+    };
+
+    if (prevStart && prevEnd) {
+      const prevMatchUser = buildMatch(prevStart, prevEnd, false);
+      const prevMatchSession = buildMatch(prevStart, prevEnd, true);
+
+      const [prevUsers, prevPartsAgg, prevSessions] = await Promise.all([
+        User.countDocuments(prevMatchUser),
+        GameSession.aggregate([{ $match: prevMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+        GameSession.countDocuments(prevMatchSession)
       ]);
 
-      const totalParticipants = participantsAgg.length > 0 ? participantsAgg[0].count : 0;
-      const totalReplays = Math.max(0, totalSessions - totalParticipants);
-      const mostUsedVehicle = vehicleAgg.length > 0 ? vehicleAgg[0]._id : null;
+      const prevParticipants = prevPartsAgg.length > 0 ? prevPartsAgg[0].count : 0;
+      const prevReplays = Math.max(0, prevSessions - prevParticipants);
 
-      // ==========================================
-      // 5. FETCH PREVIOUS DATA & CALCULATE GROWTH
-      // ==========================================
-      // Default to null so frontend hides the arrow for Custom/All Time
-      let registrationGrowth = null, participantGrowth = null, replayGrowth = null;
-
-      const calculatePercentage = (curr, prev) => {
-        if (prev === 0) return curr > 0 ? 100 : 0;
-        return Number((((curr - prev) / prev) * 100).toFixed(1));
-      };
-
-      if (prevStart && prevEnd) {
-        const prevMatchUser = buildMatch(prevStart, prevEnd, false);
-        const prevMatchSession = buildMatch(prevStart, prevEnd, true);
-
-        const [prevUsers, prevPartsAgg, prevSessions] = await Promise.all([
-          User.countDocuments(prevMatchUser),
-          GameSession.aggregate([{ $match: prevMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
-          GameSession.countDocuments(prevMatchSession)
-        ]);
-
-        const prevParticipants = prevPartsAgg.length > 0 ? prevPartsAgg[0].count : 0;
-        const prevReplays = Math.max(0, prevSessions - prevParticipants);
-
-        registrationGrowth = calculatePercentage(totalUsers, prevUsers);
-        participantGrowth = calculatePercentage(totalParticipants, prevParticipants);
-        replayGrowth = calculatePercentage(totalReplays, prevReplays);
-      }
-
-      // ==========================================
-      // 6. SEND RESPONSE
-      // ==========================================
-      return res.status(200).json({
-        success: true,
-        data: {
-          trendLabel, // Passes the text to React (e.g., "vs yesterday")
-          totalUsers,
-          registrationGrowth,
-          totalParticipants,
-          participantGrowth,
-          totalReplays,
-          replayGrowth,
-          mostUsedVehicle // No growth data passed here, so frontend hides it automatically!
-        }
-      });
-
-    } catch (error) {
-      console.error("Stats Card Error:", error);
-      return res.status(500).json({ success: false, message: error.message });
+      registrationGrowth = calculatePercentage(totalUsers, prevUsers);
+      participantGrowth = calculatePercentage(totalParticipants, prevParticipants);
+      replayGrowth = calculatePercentage(totalReplays, prevReplays);
     }
-  };
+
+    // ==========================================
+    // 6. SEND RESPONSE
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      data: {
+        trendLabel, // Passes the text to React (e.g., "vs yesterday")
+        totalUsers,
+        registrationGrowth,
+        totalParticipants,
+        participantGrowth,
+        totalReplays,
+        replayGrowth,
+        mostUsedVehicle // No growth data passed here, so frontend hides it automatically!
+      }
+    });
+
+  } catch (error) {
+    console.error("Stats Card Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 exports.getTimingGraphData = async (req, res) => {
   try {
@@ -469,13 +469,13 @@ exports.getTimingGraphData = async (req, res) => {
     // 4. Initialize buckets covering the FULL 24 hours (so no late-night players are ignored)
     const timingGraphData = [
       { time: "12am", participants: 0 },
-      { time: "3am",  participants: 0 },
-      { time: "6am",  participants: 0 },
-      { time: "9am",  participants: 0 },
+      { time: "3am", participants: 0 },
+      { time: "6am", participants: 0 },
+      { time: "9am", participants: 0 },
       { time: "12pm", participants: 0 },
-      { time: "3pm",  participants: 0 },
-      { time: "6pm",  participants: 0 },
-      { time: "9pm",  participants: 0 },
+      { time: "3pm", participants: 0 },
+      { time: "6pm", participants: 0 },
+      { time: "9pm", participants: 0 },
     ];
 
     // 5. Populate the buckets
@@ -747,12 +747,12 @@ exports.createAdminWithTempPassword = async (req, res) => {
 
     await newAdmin.save();
     const loginUrl = `${process.env.ADMIN_PANEL_URL}`;
-console.log("Admin Panel URL:", loginUrl, newAdmin);
+    console.log("Admin Panel URL:", loginUrl, newAdmin);
     // 6. Send email
-  const seneMaillog = await brevoSendMail({
-  to: email,
-  subject: "Your Admin Account Created",
-  html: `
+    const seneMaillog = await brevoSendMail({
+      to: email,
+      subject: "Your Admin Account Created",
+      html: `
     <h2>Welcome ${fullname}</h2>
 
     <p>Your admin account has been created successfully.</p>
@@ -790,8 +790,8 @@ console.log("Admin Panel URL:", loginUrl, newAdmin);
 
     <p>Please login and change your password immediately.</p>
   `,
-});
-    
+    });
+
 
     return res.status(201).json({
       success: true,
@@ -1249,6 +1249,32 @@ exports.forgotPassword = async (req, res) => {
     // Pass the email and the generated OTP to your custom function
     // await sendOtpEmail(admin.email, otp);
 
+
+    // Generate the HTML template
+    const emailHtml = `
+  <div style="font-family: Helvetica, Arial, sans-serif; min-width: 1000px; overflow: auto; line-height: 2">
+    <div style="margin: 50px auto; width: 70%; padding: 20px 0">
+      <div style="border-bottom: 1px solid #eee">
+        <a href="" style="font-size: 1.4em; color: #00466a; text-decoration: none; font-weight: 600">Kanoo Rental Game</a>
+      </div>
+      <p style="font-size: 1.1em">Hi,</p>
+      <p>Use the following OTP to complete your password reset procedures. OTP is valid for 10 minutes.</p>
+      <h2 style="background: #00466a; margin: 0 auto; width: max-content; padding: 0 10px; color: #fff; border-radius: 4px;">${otp}</h2>
+      <p style="font-size: 0.9em;">Regards,<br />Kanoo Rental Game Team</p>
+      <hr style="border: none; border-top: 1px solid #eee" />
+      <div style="float: right; padding: 8px 0; color: #aaa; font-size: 0.8em; line-height: 1; font-weight: 300">
+        <p>Kanoo Rental Game Inc</p>
+      </div>
+    </div>
+  </div>
+`;
+
+    // Call your Brevo utility
+    await brevoSendMail({
+      to: admin.email,
+      subject: "Your Password Reset OTP",
+      html: emailHtml
+    });
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully to your email"

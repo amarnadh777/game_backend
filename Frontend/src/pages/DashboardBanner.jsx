@@ -570,7 +570,7 @@ const DashboardBanner = () => {
         {/* Table Area */}
         {/* Table Area */}
         <div className="flex-1 overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+      <table className="w-full text-left border-collapse min-w-[800px]">
   <thead>
     <tr className="bg-[#F3F4F6] border-b border-gray-200">
       <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-12"></th>
@@ -593,21 +593,23 @@ const DashboardBanner = () => {
 
         return (
           <React.Fragment key={group.bannerId}>
-            {/* MAIN ROW */}
+            {/* --- MAIN ROW --- */}
             <tr
               className={`transition-all cursor-pointer border-l-4 ${
                 isExpanded ? "bg-indigo-50/40 border-indigo-600" : "bg-white hover:bg-slate-50 border-transparent"
               }`}
               onClick={() => setExpandedGroups(prev => ({ ...prev, [group.bannerId]: !prev[group.bannerId] }))}
             >
+              {/* Expand Icon */}
               <td className="py-4 px-6 text-center">
-                <div className={`transition-transform duration-300 ${isExpanded ? "rotate-90 text-indigo-600" : "text-slate-400"}`}>
+                <div className={`transition-transform duration-300 inline-block ${isExpanded ? "rotate-90 text-indigo-600" : "text-slate-400"}`}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
                 </div>
               </td>
 
+              {/* Banner Name & Variant Count */}
               <td className="py-4 px-6">
                 <div className="flex flex-col">
                   <span className={`text-[15px] font-bold ${isExpanded ? "text-indigo-900" : "text-slate-800"}`}>
@@ -616,40 +618,31 @@ const DashboardBanner = () => {
                       : firstVariant.name
                     }
                   </span>
-                  {hasMultiple && (
-                    <span className="text-[11px] text-indigo-500 font-bold mt-0.5 uppercase tracking-tight">
-                      {group.variants.length} Variants Available
-                    </span>
-                  )}
+                  <span className="text-[11px] text-indigo-500 font-bold mt-0.5 uppercase tracking-tight">
+                    {group.variants.length} Variant{group.variants.length !== 1 ? 's' : ''} Available
+                  </span>
                 </div>
               </td>
 
+              {/* Status Text */}
               <td className="py-4 px-6">
                 <span className="text-[14px] font-medium text-slate-600">
                   {hasMultiple ? "---" : (firstVariant.status ? "Active" : "Disabled")}
                 </span>
               </td>
 
-              <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+              {/* Actions (Only View Details now) */}
+              <td className="py-4 px-6">
                 <div className="flex items-center gap-4">
-                  {!hasMultiple && (
-                    <div 
-                      onClick={() => toggleStatus(firstVariant.id || firstVariant._id)} 
-                      className={`relative inline-flex h-[28px] w-[85px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${firstVariant.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
-                    >
-                      <span className={`absolute text-[10px] font-bold text-white transition-opacity ${firstVariant.status ? "left-2 opacity-100" : "opacity-0"}`}>ACTIVE</span>
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-300 shadow-sm z-10 ${firstVariant.status ? "translate-x-[61px]" : "translate-x-1"}`} />
-                      <span className={`absolute text-[10px] font-bold text-white transition-opacity ${firstVariant.status ? "opacity-0" : "right-2 opacity-100"}`}>OFF</span>
-                    </div>
-                  )}
-                  <span className="text-[11px] font-black text-slate-400">
+                  {/* Clicking this text inherits the row's onClick and expands the details */}
+                  <span className="text-[11px] font-black text-indigo-500 hover:text-indigo-700 transition-colors">
                     {isExpanded ? "HIDE DETAILS" : "VIEW DETAILS"}
                   </span>
                 </div>
               </td>
             </tr>
 
-            {/* EXPANDED CONTENT */}
+            {/* --- EXPANDED CONTENT (VARIANTS) --- */}
             {isExpanded && (
               <tr className="bg-slate-50/50">
                 <td colSpan="4" className="py-4 px-12 border-l-4 border-indigo-600">
@@ -657,6 +650,7 @@ const DashboardBanner = () => {
                     {group.variants.map((variant) => (
                       <div key={variant.id || variant._id} className="flex items-center gap-6 p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                         
+                        {/* Image Thumbnail */}
                         <div className="w-[80px] h-[50px] bg-slate-100 rounded border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
                           {variant.imageUrl || (variant.carImages && variant.carImages[0]?.imageUrl) ? (
                             <img 
@@ -669,6 +663,7 @@ const DashboardBanner = () => {
                           )}
                         </div>
 
+                        {/* Variant Details */}
                         <div className="flex-1">
                           <p className="text-[13px] font-bold text-slate-700">{variant.name}</p>
                           {variant.isCarSpecific && (
@@ -676,8 +671,9 @@ const DashboardBanner = () => {
                           )}
                         </div>
 
+                        {/* Variant Actions (Toggles and Buttons live here now) */}
                         <div className="flex items-center gap-4">
-                           {/* VARIANT STATUS TOGGLE WITH TEXT */}
+                           {/* Variant Status Toggle */}
                            <div 
                              onClick={() => toggleStatus(variant.id || variant._id)} 
                              className={`relative inline-flex h-[26px] w-[80px] shrink-0 items-center rounded-full cursor-pointer transition-colors ${variant.status ? "bg-[#00B050]" : "bg-[#990000]"}`}
@@ -687,14 +683,15 @@ const DashboardBanner = () => {
                               <span className={`absolute text-[9px] font-bold text-white transition-opacity ${variant.status ? "opacity-0" : "right-2 opacity-100"}`}>OFF</span>
                            </div>
 
+                           {/* Edit / Clone / Delete Buttons */}
                            <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
-                              <button onClick={() => openEditModal(variant)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                              <button onClick={() => openEditModal(variant)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                               </button>
-                              <button onClick={() => openCloneModal(variant)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                              <button onClick={() => openCloneModal(variant)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Clone">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                               </button>
-                              <button onClick={() => openDeleteModal(variant)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                              <button onClick={() => openDeleteModal(variant)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                               </button>
                            </div>

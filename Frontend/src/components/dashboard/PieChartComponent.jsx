@@ -18,7 +18,7 @@ const CAR_NAME_MAP = {
 
 // Standardized values to match Dashboard ('all' instead of 'all_time')
 const quickFilters = [
-  { label: 'All time', value: 'all' },
+  { label: 'All time', value: 'all_time' },
   { label: 'Today', value: 'today' },
   { label: 'This week', value: 'this_week' },
   { label: 'Last week', value: 'last_week' },

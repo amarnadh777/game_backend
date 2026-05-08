@@ -446,16 +446,20 @@ const DashboardBanner = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. If NOT editing and NOT specific cars, a file is required.
+    // 1. If NOT editing and NOT specific cars, a single file is required.
     if (!editingId && !applyToSpecificCars && !formData.file) {
       toast.error("Please select an image file to upload.");
       return;
     }
 
-    // 2. FIXED: If specific cars is selected, at least one car MUST be checked (for BOTH Add and Edit).
-    if (applyToSpecificCars && specificCars.filter(c => c.enabled).length === 0) {
-      toast.error("Please select at least one specific car.");
-      return;
+    // 2. FIXED: If specific cars is selected, ALL cars must have an image
+    if (applyToSpecificCars) {
+      // If editing, a car might already have a 'preview' URL. If new, it needs a 'file'.
+      const hasMissingImages = specificCars.some(c => !c.file && !c.preview);
+      if (hasMissingImages) {
+        toast.error("Please upload an image for every specific car.");
+        return;
+      }
     }
 
     // 3. Name is always required
@@ -479,17 +483,14 @@ const DashboardBanner = () => {
     // Match Backend Expectations
     // ==========================================
     if (applyToSpecificCars) {
-      const enabledCars = specificCars.filter(c => c.enabled);
-
       // Backend expects the key "isCarSpecific" and the string "true"
       submitData.append('isCarSpecific', 'true');
 
-      enabledCars.forEach((car, index) => {
-        // Backend expects req.body[`cars[${index}][carId]`]
+      // Now we just map over ALL specificCars instead of filtering by enabled
+      specificCars.forEach((car, index) => {
         submitData.append(`cars[${index}][carId]`, car.id);
         submitData.append(`cars[${index}][carName]`, car.name);
 
-        // Backend expects the file's fieldname to match the regex /cars\[(\d+)\]/
         if (car.file) {
           submitData.append(`cars[${index}][image]`, car.file);
         }
@@ -1001,10 +1002,11 @@ const DashboardBanner = () => {
                 </div>
 
                 {/* --- SPECIFIC CARS GRID UI (Only visible when Yes is selected) --- */}
+              {/* --- SPECIFIC CARS GRID UI (Only visible when Yes is selected) --- */}
                 {applyToSpecificCars && (
                   <div className="mb-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
 
-                    {/* Search & Bulk Actions */}
+                    {/* Search Actions */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                       <div className="relative w-full md:w-1/3">
                         <input
@@ -1015,34 +1017,25 @@ const DashboardBanner = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-[13px] outline-none focus:border-[#0A3D81]"
                         />
                       </div>
-                      <div className="flex gap-3">
-                        <button type="button" onClick={() => toggleSelectAllCars(true)} className="text-[13px] font-semibold text-[#0A3D81] hover:underline">Select All</button>
-                        <span className="text-gray-300">|</span>
-                        <button type="button" onClick={() => toggleSelectAllCars(false)} className="text-[13px] font-semibold text-red-600 hover:underline">Clear All</button>
-                      </div>
+                      {/* Select All / Clear All buttons removed entirely */}
                     </div>
 
                     {/* Car Cards Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {filteredCars.map((car) => (
-                        <div key={car.id} className={`bg-white border rounded-xl p-4 flex flex-col gap-4 shadow-sm transition-colors ${car.enabled ? 'border-[#0A3D81] ring-1 ring-[#0A3D81]/20' : 'border-gray-200'}`}>
+                        <div key={car.id} className={`bg-white border rounded-xl p-4 flex flex-col gap-4 shadow-sm transition-colors ${car.file || car.preview ? 'border-[#0A3D81] ring-1 ring-[#0A3D81]/20' : 'border-red-300 ring-1 ring-red-300/20'}`}>
 
-                          {/* Card Header (Name + Toggle) */}
+                          {/* Card Header (Name Only, Checkbox Removed) */}
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-[14px] text-gray-800 flex items-center gap-2"> {car.name}</span>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={car.enabled}
-                                onChange={() => toggleSpecificCar(car.id)}
-                                className="w-4 h-4 rounded text-[#0A3D81] focus:ring-[#0A3D81] border-gray-300 cursor-pointer"
-                              />
-                              <span className="text-[12px] font-medium text-gray-600">Enable</span>
-                            </label>
+                            {/* Required Indicator */}
+                            {/* {!(car.file || car.preview) && (
+                              <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Required</span>
+                            )} */}
                           </div>
 
-                          {/* Upload Action */}
-                          <div className={!car.enabled ? 'opacity-50 pointer-events-none' : ''}>
+                          {/* Upload Action (Disabled state removed) */}
+                          <div>
                             <input
                               type="file"
                               id={`file-${car.id}`}
@@ -1058,14 +1051,15 @@ const DashboardBanner = () => {
                             </label>
                           </div>
 
-                          {/* Image Preview */}
-                          <div className={`h-28 bg-[#EEF1F6] rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden ${!car.enabled ? 'opacity-50' : ''}`}>
+                          {/* Image Preview (Disabled state removed) */}
+                          <div className="h-28 bg-[#EEF1F6] rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
                             {car.preview ? (
                               <img src={car.preview} className="w-full h-full object-contain bg-white" alt={`${car.name} preview`} />
                             ) : (
                               <span className="text-[11px] text-gray-400 font-medium">Preview Img</span>
                             )}
                           </div>
+                          
                         </div>
                       ))}
                     </div>

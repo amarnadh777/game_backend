@@ -202,10 +202,17 @@ exports.analytics = async (req, res) => {
 
 exports.getParticipantsGraphData = async (req, res) => {
   try {
-    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+    const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
+    
+    // 1. Get dates. (Assuming getDateRange returns local midnight-to-midnight Date objects)
     const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
 
-    // 1. Get raw data from MongoDB grouped by exact Date (YYYY-MM-DD)
+    // Guard clause: If 'all' is selected and there's no start date, return empty or handle differently
+    if (!startDate || !endDate) {
+       return res.status(400).json({ success: false, message: "Valid date range required" });
+    }
+
+    // 2. Get raw data from MongoDB grouped by exact Date
     const dailyData = await GameSession.aggregate([
       {
         $match: {
@@ -213,16 +220,22 @@ exports.getParticipantsGraphData = async (req, res) => {
           completedAt: { $gte: startDate, $lte: endDate }
         }
       },
-      // Group by user AND formatted date to get UNIQUE users per day
       {
         $group: {
           _id: {
-            dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
+            // FIXED: Added timezone to ensure it groups by your local day, not UTC
+            // Change "Asia/Kolkata" to your actual timezone if you aren't in India
+            dateStr: { 
+              $dateToString: { 
+                format: "%Y-%m-%d", 
+                date: "$completedAt",
+                timezone: "Asia/Kolkata" 
+              } 
+            },
             userId: "$userId"
           }
         }
       },
-      // Group again to count the unique users per day
       {
         $group: {
           _id: "$_id.dateStr",
@@ -232,28 +245,36 @@ exports.getParticipantsGraphData = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
-    // 2. Generate a continuous array of dates between start and end
-    // This ensures days with 0 participants still show up on the graph!
+    // 3. Generate the continuous array
     const chartData = [];
     const currentDate = new Date(startDate);
     const end = new Date(endDate);
 
     while (currentDate <= end) {
-      // Format current date to YYYY-MM-DD to match MongoDB output
-      const dateString = currentDate.toISOString().split('T')[0];
+      // FIXED: Safely extract Local YYYY-MM-DD instead of using UTC toISOString()
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
 
       // Find if we have data for this day from DB
       const dbRecord = dailyData.find((d) => d._id === dateString);
 
       // Create a nice label for the frontend graph
-      // If looking at a week, show "Mon". If longer, show "Oct 12"
       const isWeekFilter = filter === 'this_week' || filter === 'last_week';
-      const label = isWeekFilter
-        ? currentDate.toLocaleDateString('en-US', { weekday: 'short' }) // "Mon"
-        : currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // "Oct 12"
+      
+      // If it's just "today", we can format it to say "Today" or show the hour
+      let label = "";
+      if (filter === 'today') {
+        label = "Today"; 
+      } else {
+        label = isWeekFilter
+          ? currentDate.toLocaleDateString('en-US', { weekday: 'short' })
+          : currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
 
       chartData.push({
-        day: label, // This matches what Recharts expects on the frontend
+        day: label,
         participants: dbRecord ? dbRecord.participantsCount : 0
       });
 
@@ -267,7 +288,7 @@ exports.getParticipantsGraphData = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Participants Graph Error:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -275,149 +296,156 @@ exports.getParticipantsGraphData = async (req, res) => {
   }
 };
 
-exports.getStatsCardsData = async (req, res) => {
-  try {
-    const { timeframe = 'all', from, to } = req.query;
+  exports.getStatsCardsData = async (req, res) => {
+    try {
+      const { timeframe = 'all', from, to } = req.query;
 
-    // ==========================================
-    // 1. GET CURRENT DATES (Using your utility)
-    // ==========================================
-    let currentStart = null;
-    let currentEnd = null;
+      // ==========================================
+      // 1. GET CURRENT DATES (Using your utility)
+      // ==========================================
+      let currentStart = null;
+      let currentEnd = null;
 
-    if (timeframe !== 'all') {
-      const { startDate, endDate } = getDateRange(timeframe, from, to);
-      currentStart = startDate;
-      currentEnd = endDate;
-    }
+      if (timeframe !== 'all') {
+        const { startDate, endDate } = getDateRange(timeframe, from, to);
+        currentStart = startDate;
+        currentEnd = endDate;
+      }
 
-    // ==========================================
-    // 2. CALCULATE PREVIOUS DATES & TREND LABEL
-    // ==========================================
-    let prevStart = null;
-    let prevEnd = null;
-    let trendLabel = null; // NEW: Dynamic text for the frontend
+      // ==========================================
+      // 2. CALCULATE PREVIOUS DATES & TREND LABEL
+      // ==========================================
+      let prevStart = null;
+      let prevEnd = null;
+      let trendLabel = null; // NEW: Dynamic text for the frontend
 
-    if (timeframe === 'today') {
-      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
-      prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 1);
-      trendLabel = "vs yesterday";
-    } else if (timeframe === 'this_week') {
-      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
-      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-      trendLabel = "vs last week";
-    } else if (timeframe === 'last_week') {
-      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
-      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-      trendLabel = "vs previous week";
-    } else if (timeframe === 'this_month') {
-      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
-      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-      trendLabel = "vs last month";
-    } else if (timeframe === 'last_month') {
-      prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
-      prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
-      trendLabel = "vs previous month";
-    }
-    // For 'all' and 'custom', prevStart/prevEnd stay null, and trendLabel stays null.
+      if (timeframe === 'today') {
+        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
+        prevEnd = new Date(currentEnd); prevEnd.setDate(prevEnd.getDate() - 1);
+        trendLabel = "vs yesterday";
+      } else if (timeframe === 'this_week') {
+        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+        trendLabel = "vs last week";
+      } else if (timeframe === 'last_week') {
+        prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 7);
+        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+        trendLabel = "vs previous week";
+      } else if (timeframe === 'this_month') {
+        prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+        trendLabel = "vs last month";
+      } else if (timeframe === 'last_month') {
+        prevStart = new Date(currentStart); prevStart.setMonth(prevStart.getMonth() - 1);
+        prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+        trendLabel = "vs previous month";
+      }
+      // For 'all' and 'custom', prevStart/prevEnd stay null, and trendLabel stays null.
 
-    // ==========================================
-    // 3. BUILD MONGODB FILTERS
-    // ==========================================
-    const buildMatch = (start, end, isSession = false) => {
-      if (!start || !end) return isSession ? { status: "COMPLETED" } : {};
-      const dateField = isSession ? "completedAt" : "createdAt";
-      return { ...(isSession && { status: "COMPLETED" }), [dateField]: { $gte: start, $lte: end } };
-    };
+      // ==========================================
+      // 3. BUILD MONGODB FILTERS
+      // ==========================================
+      const buildMatch = (start, end, isSession = false) => {
+        if (!start || !end) return isSession ? { status: "COMPLETED" } : {};
+        const dateField = isSession ? "completedAt" : "createdAt";
+        return { ...(isSession && { status: "COMPLETED" }), [dateField]: { $gte: start, $lte: end } };
+      };
 
-    const currentMatchUser = buildMatch(currentStart, currentEnd, false);
-    const currentMatchSession = buildMatch(currentStart, currentEnd, true);
+      const currentMatchUser = buildMatch(currentStart, currentEnd, false);
+      const currentMatchSession = buildMatch(currentStart, currentEnd, true);
 
-    // ==========================================
-    // 4. FETCH CURRENT DATA
-    // ==========================================
-    const [
-      totalUsers,
-      participantsAgg,
-      totalSessions,
-      vehicleAgg
-    ] = await Promise.all([
-      User.countDocuments(currentMatchUser),
-      GameSession.aggregate([{ $match: currentMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
-      GameSession.countDocuments(currentMatchSession),
+      // ==========================================
+      // 4. FETCH CURRENT DATA
+      // ==========================================
+      const [
+        totalUsers,
+        participantsAgg,
+        totalSessions,
+        vehicleAgg
+      ] = await Promise.all([
+        User.countDocuments(currentMatchUser),
+        GameSession.aggregate([{ $match: currentMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+        GameSession.countDocuments(currentMatchSession),
       GameSession.aggregate([
         { $match: { ...currentMatchSession, vehicle: { $exists: true, $ne: null } } },
-        { $group: { _id: "$vehicle", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
+        { 
+          $group: { 
+            _id: "$vehicle", 
+            count: { $sum: 1 },
+            // NEW: Find the absolute fastest time recorded for this vehicle in this timeframe
+            bestTime: { $min: "$timeTaken" } 
+          } 
+        },
+        // NEW: Sort by count FIRST (highest to lowest), then by bestTime SECOND (lowest/fastest to highest)
+        { $sort: { count: -1, bestTime: 1 } },
         { $limit: 1 }
       ])
-    ]);
-
-    const totalParticipants = participantsAgg.length > 0 ? participantsAgg[0].count : 0;
-    const totalReplays = Math.max(0, totalSessions - totalParticipants);
-    const mostUsedVehicle = vehicleAgg.length > 0 ? vehicleAgg[0]._id : null;
-
-    // ==========================================
-    // 5. FETCH PREVIOUS DATA & CALCULATE GROWTH
-    // ==========================================
-    // Default to null so frontend hides the arrow for Custom/All Time
-    let registrationGrowth = null, participantGrowth = null, replayGrowth = null;
-
-    const calculatePercentage = (curr, prev) => {
-      if (prev === 0) return curr > 0 ? 100 : 0;
-      return Number((((curr - prev) / prev) * 100).toFixed(1));
-    };
-
-    if (prevStart && prevEnd) {
-      const prevMatchUser = buildMatch(prevStart, prevEnd, false);
-      const prevMatchSession = buildMatch(prevStart, prevEnd, true);
-
-      const [prevUsers, prevPartsAgg, prevSessions] = await Promise.all([
-        User.countDocuments(prevMatchUser),
-        GameSession.aggregate([{ $match: prevMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
-        GameSession.countDocuments(prevMatchSession)
       ]);
 
-      const prevParticipants = prevPartsAgg.length > 0 ? prevPartsAgg[0].count : 0;
-      const prevReplays = Math.max(0, prevSessions - prevParticipants);
+      const totalParticipants = participantsAgg.length > 0 ? participantsAgg[0].count : 0;
+      const totalReplays = Math.max(0, totalSessions - totalParticipants);
+      const mostUsedVehicle = vehicleAgg.length > 0 ? vehicleAgg[0]._id : null;
 
-      registrationGrowth = calculatePercentage(totalUsers, prevUsers);
-      participantGrowth = calculatePercentage(totalParticipants, prevParticipants);
-      replayGrowth = calculatePercentage(totalReplays, prevReplays);
-    }
+      // ==========================================
+      // 5. FETCH PREVIOUS DATA & CALCULATE GROWTH
+      // ==========================================
+      // Default to null so frontend hides the arrow for Custom/All Time
+      let registrationGrowth = null, participantGrowth = null, replayGrowth = null;
 
-    // ==========================================
-    // 6. SEND RESPONSE
-    // ==========================================
-    return res.status(200).json({
-      success: true,
-      data: {
-        trendLabel, // Passes the text to React (e.g., "vs yesterday")
-        totalUsers,
-        registrationGrowth,
-        totalParticipants,
-        participantGrowth,
-        totalReplays,
-        replayGrowth,
-        mostUsedVehicle // No growth data passed here, so frontend hides it automatically!
+      const calculatePercentage = (curr, prev) => {
+        if (prev === 0) return curr > 0 ? 100 : 0;
+        return Number((((curr - prev) / prev) * 100).toFixed(1));
+      };
+
+      if (prevStart && prevEnd) {
+        const prevMatchUser = buildMatch(prevStart, prevEnd, false);
+        const prevMatchSession = buildMatch(prevStart, prevEnd, true);
+
+        const [prevUsers, prevPartsAgg, prevSessions] = await Promise.all([
+          User.countDocuments(prevMatchUser),
+          GameSession.aggregate([{ $match: prevMatchSession }, { $group: { _id: "$userId" } }, { $count: "count" }]),
+          GameSession.countDocuments(prevMatchSession)
+        ]);
+
+        const prevParticipants = prevPartsAgg.length > 0 ? prevPartsAgg[0].count : 0;
+        const prevReplays = Math.max(0, prevSessions - prevParticipants);
+
+        registrationGrowth = calculatePercentage(totalUsers, prevUsers);
+        participantGrowth = calculatePercentage(totalParticipants, prevParticipants);
+        replayGrowth = calculatePercentage(totalReplays, prevReplays);
       }
-    });
 
-  } catch (error) {
-    console.error("Stats Card Error:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
+      // ==========================================
+      // 6. SEND RESPONSE
+      // ==========================================
+      return res.status(200).json({
+        success: true,
+        data: {
+          trendLabel, // Passes the text to React (e.g., "vs yesterday")
+          totalUsers,
+          registrationGrowth,
+          totalParticipants,
+          participantGrowth,
+          totalReplays,
+          replayGrowth,
+          mostUsedVehicle // No growth data passed here, so frontend hides it automatically!
+        }
+      });
+
+    } catch (error) {
+      console.error("Stats Card Error:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  };
 
 exports.getTimingGraphData = async (req, res) => {
   try {
-    // Default to 'all' if no filter is provided
     const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
 
     // 1. Create the base match object
     const baseMatch = { status: "COMPLETED" };
 
-    // 2. Only calculate and apply date ranges if the filter is NOT 'all' or 'all_time'
+    // 2. Apply date ranges if the filter is NOT 'all'
     if (filter !== 'all' && filter !== 'all_time') {
       const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
 
@@ -426,40 +454,43 @@ exports.getTimingGraphData = async (req, res) => {
       }
     }
 
-    // 3. Fetch the raw data grouped by hour
+    // 3. Fetch the raw data grouped by local hour (Fixing the UTC issue)
     const hourlyParticipantsData = await GameSession.aggregate([
       { $match: baseMatch },
       {
         $group: {
-          _id: { $hour: "$completedAt" },
+          // Convert the stored UTC time to Indian Standard Time before extracting the hour
+          _id: { $hour: { date: "$completedAt", timezone: "Asia/Kolkata" } },
           participantsCount: { $sum: 1 },
         },
       },
     ]);
 
-    // 4. Initialize your timing buckets to 0
+    // 4. Initialize buckets covering the FULL 24 hours (so no late-night players are ignored)
     const timingGraphData = [
-      { time: "8am", participants: 0 },
-      { time: "10am", participants: 0 },
+      { time: "12am", participants: 0 },
+      { time: "3am",  participants: 0 },
+      { time: "6am",  participants: 0 },
+      { time: "9am",  participants: 0 },
       { time: "12pm", participants: 0 },
-      { time: "2pm", participants: 0 },
-      { time: "4pm", participants: 0 },
-      { time: "6pm", participants: 0 },
-      { time: "8pm", participants: 0 },
+      { time: "3pm",  participants: 0 },
+      { time: "6pm",  participants: 0 },
+      { time: "9pm",  participants: 0 },
     ];
 
-    // 5. Populate the buckets with the database results
+    // 5. Populate the buckets
     hourlyParticipantsData.forEach((data) => {
-      const hour = data._id;
+      const hour = data._id; // This is now local IST hour (0 to 23)
       const count = data.participantsCount;
 
-      if (hour >= 8 && hour < 10) timingGraphData[0].participants += count;
-      else if (hour >= 10 && hour < 12) timingGraphData[1].participants += count;
-      else if (hour >= 12 && hour < 14) timingGraphData[2].participants += count;
-      else if (hour >= 14 && hour < 16) timingGraphData[3].participants += count;
-      else if (hour >= 16 && hour < 18) timingGraphData[4].participants += count;
-      else if (hour >= 18 && hour < 20) timingGraphData[5].participants += count;
-      else if (hour >= 20 && hour < 22) timingGraphData[6].participants += count;
+      if (hour >= 0 && hour < 3) timingGraphData[0].participants += count;
+      else if (hour >= 3 && hour < 6) timingGraphData[1].participants += count;
+      else if (hour >= 6 && hour < 9) timingGraphData[2].participants += count;
+      else if (hour >= 9 && hour < 12) timingGraphData[3].participants += count;
+      else if (hour >= 12 && hour < 15) timingGraphData[4].participants += count;
+      else if (hour >= 15 && hour < 18) timingGraphData[5].participants += count;
+      else if (hour >= 18 && hour < 21) timingGraphData[6].participants += count;
+      else if (hour >= 21 && hour <= 23) timingGraphData[7].participants += count;
     });
 
     return res.status(200).json({
@@ -467,14 +498,13 @@ exports.getTimingGraphData = async (req, res) => {
       data: timingGraphData,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Timing Graph Error:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
-
 
 exports.getVehicleGraphData = async (req, res) => {
   try {

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import axiosInstance from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Note: Changed 'all_time' to 'all' to match your Dashboard's global values perfectly.
 const quickFilters = [
   { label: 'All time', value: 'all_time' },
   { label: 'Today', value: 'today' },
@@ -15,7 +13,6 @@ const quickFilters = [
   { label: 'Last month', value: 'last_month' },
 ];
 
-// 1. Accept the global props from the Dashboard
 function ParticipantsByCountry({ activeFilter: globalFilter, customRange: globalCustomRange }) {
   const [activeFilter, setActiveFilter] = useState(quickFilters[0]); 
   const [showFilter, setShowFilter]         = useState(false);
@@ -24,7 +21,6 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
   const [chartData, setChartData]           = useState([]);
   const [loading, setLoading]               = useState(false);
 
-  // HELPER: Convert YYYY-MM-DD to DD/MM/YYYY for the button label
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return '';
     const [year, month, day] = dateString.split('-');
@@ -61,8 +57,6 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
   // ==========================================
   // SYNC GLOBAL FILTER -> LOCAL FILTER
   // ==========================================
-  // This useEffect listens to the Dashboard. If the Dashboard filter changes,
-  // it updates this chart's local state and fetches the new data.
   useEffect(() => {
     if (!globalFilter) return;
 
@@ -79,14 +73,13 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
         fetchGraphData('custom', gFrom, gTo);
       }
     } else {
-      // Find the matching quick filter object
       const matchedFilter = quickFilters.find(f => f.value === globalFilter) || quickFilters[0];
       setActiveFilter(matchedFilter);
       setFromDate('');
       setToDate('');
       fetchGraphData(matchedFilter.value);
     }
-  }, [globalFilter, globalCustomRange]); // Run every time global props change
+  }, [globalFilter, globalCustomRange]);
 
 
   // ==========================================
@@ -108,7 +101,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
   const handleQuickSelect = (filterObj) => {
     setActiveFilter(filterObj);
     setShowFilter(false);
-    fetchGraphData(filterObj.value); // Fetch locally
+    fetchGraphData(filterObj.value);
   };
 
   const handleClearFilter = (e) => {
@@ -117,10 +110,11 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
     setToDate('');
     const defaultFilter = quickFilters[0];
     setActiveFilter(defaultFilter);
-    fetchGraphData(defaultFilter.value); // Reset locally to 'all'
+    fetchGraphData(defaultFilter.value);
   };
 
-  const isFiltered = activeFilter.value !== 'all';
+  // FIX: Checks against 'all_time' so the default state is unstyled
+  const isFiltered = activeFilter.value !== 'all_time';
 
   return (
     <div className="w-full">
@@ -136,7 +130,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
               onClick={() => setShowFilter(prev => !prev)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs transition-colors ${
                 isFiltered
-                  ? 'bg-[#2840B6] text-white border-[#2840B6]'
+                  ? 'bg-[#004B8D] text-white border-[#004B8D]'
                   : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -165,7 +159,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
                       onClick={() => handleQuickSelect(f)}
                       className={`text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
                         activeFilter.value === f.value
-                          ? 'bg-[#eef0fb] text-[#2840B6] font-medium'
+                          ? 'bg-[#EBF5FF] text-[#004B8D] font-bold'
                           : 'text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -184,7 +178,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
                       type="date"
                       value={fromDate}
                       onChange={e => setFromDate(e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#2840B6] w-full"
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#004B8D] w-full"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -193,13 +187,13 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
                       type="date"
                       value={toDate}
                       onChange={e => setToDate(e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#2840B6] w-full"
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#004B8D] w-full"
                     />
                   </div>
                   <button
                     onClick={handleApplyCustom}
                     disabled={!fromDate || !toDate}
-                    className="mt-1 w-full bg-[#2840B6] text-white text-xs py-1.5 rounded-lg disabled:opacity-40 hover:bg-[#1e3294]"
+                    className="mt-1 w-full bg-[#004B8D] text-white text-xs py-1.5 rounded-lg disabled:opacity-40 hover:bg-[#003A6F] transition-colors"
                   >
                     Apply
                   </button>
@@ -247,7 +241,7 @@ function ParticipantsByCountry({ activeFilter: globalFilter, customRange: global
                 />
                 <Bar
                   dataKey="participants"
-                  fill="#2840B6"
+                  fill="#004B8D"
                   barSize={40}
                   radius={[2, 2, 0, 0]}
                 />

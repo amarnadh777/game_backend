@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import logo from '../assets/kanoologo.png';
 import axiosInstance from '../api/axios';
@@ -9,7 +8,7 @@ const Login = () => {
   // Using 'identifier' to allow either email or username to match our backend logic
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // NEW: State for toggling password visibility
+  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
@@ -56,15 +55,15 @@ const Login = () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#EBF5FF] p-6 relative overflow-hidden">
       
       {/* Decorative background blur */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#11087C] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#F1C82A] opacity-10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#004B8D] opacity-5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#FFD100] opacity-15 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Main Login Card */}
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-[440px] p-8 md:p-10 relative z-10 border border-white">
         
         {/* Logo & Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-auto h-16 mb-6 flex items-center justify-center bg-[#11087C] p-4 rounded-xl shadow-inner">
+          <div className="w-auto h-16 mb-6 flex items-center justify-center bg-[#004B8D] p-4 rounded-xl shadow-inner">
              <img src={logo} alt="Kanoo Logo" className="h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-wide mb-2">
@@ -89,7 +88,7 @@ const Login = () => {
               placeholder="Enter your email or username"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-800 text-sm py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[#0A3D81] transition-all w-full"
+              className="bg-gray-50 border border-gray-200 text-gray-800 text-sm py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[#004B8D] transition-all w-full"
             />
           </div>
 
@@ -102,12 +101,12 @@ const Login = () => {
               {/* Forgot Password Link */}
               <Link 
                 to="/forgot-password" 
-                className="text-[12px] font-semibold text-[#0A3D81] hover:text-[#11087C] hover:underline transition-colors"
+                className="text-[12px] font-semibold text-[#004B8D] hover:text-[#003A6F] hover:underline transition-colors"
               >
                 Forgot Password?
               </Link>
             </div>
-            {/* NEW: Relative container for input and eye icon */}
+            {/* Relative container for input and eye icon */}
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"} // Dynamic type based on state
@@ -115,7 +114,7 @@ const Login = () => {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-gray-50 border border-gray-200 text-gray-800 text-sm py-3 px-4 pr-12 rounded-lg outline-none focus:ring-2 focus:ring-[#0A3D81] transition-all w-full"
+                className="bg-gray-50 border border-gray-200 text-gray-800 text-sm py-3 px-4 pr-12 rounded-lg outline-none focus:ring-2 focus:ring-[#004B8D] transition-all w-full"
               />
               {/* Eye Icon Toggle Button */}
               <button
@@ -144,8 +143,8 @@ const Login = () => {
           <button 
             type="submit"
             disabled={isLoading}
-            className={`mt-4 w-full bg-gradient-to-r from-[#FDE57E] to-[#F1C82A] text-slate-800 text-[15px] font-bold py-3 px-5 rounded-lg transition-transform flex items-center justify-center gap-2 ${
-              isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-[#F1C82A]/20 active:scale-95'
+            className={`mt-4 w-full bg-[#FFD100] text-[#004B8D] text-[15px] font-bold py-3 px-5 rounded-lg transition-transform flex items-center justify-center gap-2 ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-[#FFD100]/40 active:scale-95'
             }`}
           >
             {isLoading ? 'Signing In...' : 'Sign In'}

@@ -1088,32 +1088,39 @@ const DashboardBanner = () => {
         </div>
       )}
       {/* --- DELETE CONFIRMATION MODAL --- */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95 duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center border border-white/20">
-            <h3 className="text-xl font-extrabold text-slate-800 mb-2 tracking-tight">Delete Banner?</h3>
-            <p className="text-sm text-slate-500 mb-8 font-medium">
-              Are you sure you want to remove <strong className="text-slate-800">{deletingBanner?.name}</strong>? This action is permanent.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="w-full px-6 py-3 text-sm font-bold text-white bg-[#990000] hover:bg-red-800 rounded-xl transition-all shadow-md active:scale-95"
-              >
-                {isDeleting ? 'Deleting...' : 'Yes, Delete Banner'}
-              </button>
-              <button
-                onClick={closeDeleteModal}
-                disabled={isDeleting}
-                className="w-full px-6 py-3 text-sm font-bold border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl transition-all active:scale-95"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+     {isDeleteModalOpen && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95 duration-200">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center border border-white/20">
+      
+      <h3 className="text-xl font-extrabold text-[#004B8D] mb-2 tracking-tight">
+        Delete Banner?
+      </h3>
+      
+      <p className="text-sm text-slate-500 mb-8 font-medium">
+        Are you sure you want to remove <strong className="text-slate-800">{deletingBanner?.name}</strong>? This action is permanent.
+      </p>
+      
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="w-full px-6 py-3 text-sm font-bold text-white bg-[#990000] hover:bg-red-800 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isDeleting ? 'Deleting...' : 'Yes, Delete Banner'}
+        </button>
+        
+        <button
+          onClick={closeDeleteModal}
+          disabled={isDeleting}
+          className="w-full px-6 py-3 text-sm font-bold border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          Cancel
+        </button>
+      </div>
+      
+    </div>
+  </div>
+)}
 
     </div>
   );

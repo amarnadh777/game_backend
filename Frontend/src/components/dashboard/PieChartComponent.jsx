@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip
 } from 'recharts';
 import axiosInstance from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const COLORS = ['#28B67A', '#F3C300', '#0A3D81', '#E74C3C', '#9B59B6', '#1ABC9C', '#34495E'];
+const COLORS = ['#28B67A', '#F3C300', '#004B8D', '#E74C3C', '#9B59B6', '#1ABC9C', '#34495E'];
 
 const CAR_NAME_MAP = {
   "icaur_v27_royal": "Icaur V27 Royal",
@@ -16,7 +15,6 @@ const CAR_NAME_MAP = {
   "toyota_land_cruiser_gx_r_3_5l": "Toyota Land Cruiser GX-R 3.5L"
 };
 
-// Standardized values to match Dashboard ('all' instead of 'all_time')
 const quickFilters = [
   { label: 'All time', value: 'all_time' },
   { label: 'Today', value: 'today' },
@@ -57,7 +55,6 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
         const formattedData = response.data.data
           .filter(item => item.count > 0)
           .map(item => ({ 
-            // Map the raw string to the readable name, fallback to original if not in map
             name: CAR_NAME_MAP[item.name] || item.name, 
             value: item.count 
           }));
@@ -90,7 +87,6 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
         fetchGraphData('custom', gFrom, gTo);
       }
     } else {
-      // Find the filter object to keep the UI label in sync
       const matchedFilter = quickFilters.find(f => f.value === globalFilter) || quickFilters[0];
       setActiveFilter(matchedFilter);
       setFromDate('');
@@ -100,7 +96,7 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
   }, [globalFilter, globalCustomRange]);
 
   // ==========================================
-  // LOCAL CLICK HANDLERS (Overrides Global)
+  // LOCAL CLICK HANDLERS
   // ==========================================
   const handleApplyCustom = () => {
     if (!fromDate || !toDate) return;
@@ -131,21 +127,22 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
     fetchGraphData(defaultFilter.value);
   };
 
-  const isFiltered = activeFilter.value !== 'all';
+  // FIX: This now correctly checks against 'all_time'
+  const isFiltered = activeFilter.value !== 'all_time';
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm w-full h-full flex flex-col">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-     <h2 className="text-[15px] font-bold text-gray-800">Vehicle Usage Distribution</h2>
+        <h2 className="text-[15px] font-bold text-gray-800">Vehicle Usage Distribution</h2>
 
         <div className="relative">
           <button
             onClick={() => setShowFilter(prev => !prev)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs transition-colors ${
               isFiltered
-                ? 'bg-[#10b3f0] text-white border-[#10b3f0]'
+                ? 'bg-[#004B8D] text-white border-[#004B8D]'
                 : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -173,7 +170,7 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
                     onClick={() => handleQuickSelect(f)}
                     className={`text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
                       activeFilter.value === f.value
-                        ? 'bg-[#e8f7fd] text-[#10b3f0] font-medium'
+                        ? 'bg-[#EBF5FF] text-[#004B8D] font-bold'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -192,7 +189,7 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
                     type="date"
                     value={fromDate}
                     onChange={e => setFromDate(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#10b3f0] w-full"
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#004B8D] w-full"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -201,13 +198,13 @@ const MostPlayedVehiclesChart = ({ activeFilter: globalFilter, customRange: glob
                     type="date"
                     value={toDate}
                     onChange={e => setToDate(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#10b3f0] w-full"
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 outline-none focus:border-[#004B8D] w-full"
                   />
                 </div>
                 <button
                   onClick={handleApplyCustom}
                   disabled={!fromDate || !toDate}
-                  className="mt-1 w-full bg-[#10b3f0] text-white text-xs py-1.5 rounded-lg disabled:opacity-40"
+                  className="mt-1 w-full bg-[#004B8D] text-white text-xs py-1.5 rounded-lg disabled:opacity-40 transition-colors hover:bg-[#003A6F]"
                 >
                   Apply
                 </button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import axios from 'axios'; 
 import axiosInstance from '../api/axios';
 
 const AdminManagement = () => {
@@ -73,7 +72,6 @@ const AdminManagement = () => {
     e.preventDefault();
 
     if (isEditing) {
-      // 1. REAL PUT REQUEST TO EDIT ADMIN
       try {
         const payload = {
           fullname: formData.fullname,
@@ -89,11 +87,10 @@ const AdminManagement = () => {
         const response = await axiosInstance.put(`/admin/profile/edit/${currentAdminId}`, payload);
 
         if (response.data.success) {
-          // Replace the old admin data in the state with the newly updated data from the backend
           const updatedAdmin = response.data.data;
           setAdmins(admins.map(a => a._id === currentAdminId ? updatedAdmin : a));
           
-          toast.success(response.data.message); // Displays "Admin profile updated successfully"
+          toast.success(response.data.message);
           setIsModalOpen(false);
         }
       } catch (error) {
@@ -105,13 +102,11 @@ const AdminManagement = () => {
         }
       }
     } else {
-      // 2. REAL POST REQUEST TO CREATE ADMIN
       try {
         const response = await axiosInstance.post(`/admin/create-with-temp-password`, {
           fullname: formData.fullname,
           userName: formData.userName,
           email: formData.email
-          // Password omitted for creation as per request
         });
 
         const data = response.data;
@@ -146,9 +141,7 @@ const AdminManagement = () => {
   // ==========================================
   const handleToggleStatus = async (id, currentStatus) => {
     try {
-      const response = await axiosInstance.patch(`/admin/toggle-status/${id}`, {}, {
-        // headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await axiosInstance.patch(`/admin/toggle-status/${id}`, {});
 
       if (response.data.success) {
         setAdmins(admins.map(a => a._id === id ? { ...a, isActive: response.data.isActive } : a));
@@ -182,12 +175,9 @@ const AdminManagement = () => {
     setIsDeleting(true);
     
     try {
-      const response = await axiosInstance.delete(`/admin/delete/${adminToDelete._id}`, {
-        // headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await axiosInstance.delete(`/admin/delete/${adminToDelete._id}`);
 
       if (response.data.success) {
-        // Remove the deleted admin from the state
         setAdmins(admins.filter(a => a._id !== adminToDelete._id));
         toast.success(response.data.message || 'Admin deleted successfully');
         closeDeleteModal();
@@ -200,7 +190,7 @@ const AdminManagement = () => {
         toast.error("Server error. Please check your connection.");
       }
     } finally {
-      setIsDeleting(false); // Stop the loading state on the button
+      setIsDeleting(false);
     }
   };
 
@@ -216,9 +206,11 @@ const AdminManagement = () => {
         </div>
         <button 
           onClick={openCreateModal}
-          className="bg-[#11087C] hover:bg-indigo-800 text-white px-5 py-2.5 rounded-lg font-medium shadow-md transition-colors flex items-center gap-2"
+          className="bg-[#004B8D] hover:bg-[#003A6F] text-white px-5 py-2.5 rounded-lg font-medium shadow-md transition-colors flex items-center gap-2"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
           Add New Admin
         </button>
       </div>
@@ -254,17 +246,25 @@ const AdminManagement = () => {
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-3">
                       <button onClick={() => openEditModal(admin)} className="text-blue-600 hover:text-blue-900 transition-colors" title="Edit">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
                       <button onClick={() => handleToggleStatus(admin._id, admin.isActive)} className={`${admin.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'} transition-colors`} title={admin.isActive ? "Disable Admin" : "Enable Admin"}>
                         {admin.isActive ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
                         ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         )}
                       </button>
                       <button onClick={() => openDeleteModal(admin)} className="text-red-600 hover:text-red-900 transition-colors" title="Delete">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -282,24 +282,26 @@ const AdminManagement = () => {
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Admin' : 'Create New Admin'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input required type="text" name="fullname" value={formData.fullname} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="John Doe" />
+                <input required type="text" name="fullname" value={formData.fullname} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B8D] focus:border-[#004B8D] outline-none transition-all" placeholder="John Doe" />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input required type="text" name="userName" value={formData.userName} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="johndoe123" />
+                <input required type="text" name="userName" value={formData.userName} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B8D] focus:border-[#004B8D] outline-none transition-all" placeholder="johndoe123" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="john@example.com" />
+                <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B8D] focus:border-[#004B8D] outline-none transition-all" placeholder="john@example.com" />
               </div>
 
               {/* Password field only shown when editing an admin */}
@@ -308,7 +310,7 @@ const AdminManagement = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Password <span className="text-xs text-gray-400 font-normal">(Leave blank to keep current)</span>
                   </label>
-                  <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#11087C] focus:border-[#11087C] outline-none transition-all" placeholder="••••••••" />
+                  <input type="password" name="password" value={formData.password || ''} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B8D] focus:border-[#004B8D] outline-none transition-all" placeholder="••••••••" />
                 </div>
               )}
 
@@ -316,7 +318,7 @@ const AdminManagement = () => {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2.5 bg-[#11087C] text-white font-medium rounded-lg hover:bg-indigo-800 transition-colors shadow-md">
+                <button type="submit" className="px-5 py-2.5 bg-[#004B8D] text-white font-medium rounded-lg hover:bg-[#003A6F] transition-colors shadow-md">
                   {isEditing ? 'Save Changes' : 'Create Admin'}
                 </button>
               </div>

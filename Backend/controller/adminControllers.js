@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/adminModel");
 const getDateRange = require("../utils/utils");
 const crypto = require('crypto');
+const brevoSendMail = require("../helper/sendEmailBrevo")
 exports.analytics = async (req, res) => {
   try {
     // Dates for "Today vs Yesterday" growth calculations
@@ -201,10 +202,17 @@ exports.analytics = async (req, res) => {
 
 exports.getParticipantsGraphData = async (req, res) => {
   try {
-    const { filter, startDate: customStart, endDate: customEnd } = req.query;
+    const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
+
+    // 1. Get dates. (Assuming getDateRange returns local midnight-to-midnight Date objects)
     const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
 
-    // 1. Get raw data from MongoDB grouped by exact Date (YYYY-MM-DD)
+    // Guard clause: If 'all' is selected and there's no start date, return empty or handle differently
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: "Valid date range required" });
+    }
+
+    // 2. Get raw data from MongoDB grouped by exact Date
     const dailyData = await GameSession.aggregate([
       {
         $match: {
@@ -212,16 +220,22 @@ exports.getParticipantsGraphData = async (req, res) => {
           completedAt: { $gte: startDate, $lte: endDate }
         }
       },
-      // Group by user AND formatted date to get UNIQUE users per day
       {
         $group: {
           _id: {
-            dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
+            // FIXED: Added timezone to ensure it groups by your local day, not UTC
+            // Change "Asia/Kolkata" to your actual timezone if you aren't in India
+            dateStr: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$completedAt",
+                timezone: "Asia/Kolkata"
+              }
+            },
             userId: "$userId"
           }
         }
       },
-      // Group again to count the unique users per day
       {
         $group: {
           _id: "$_id.dateStr",
@@ -231,28 +245,36 @@ exports.getParticipantsGraphData = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
-    // 2. Generate a continuous array of dates between start and end
-    // This ensures days with 0 participants still show up on the graph!
+    // 3. Generate the continuous array
     const chartData = [];
     const currentDate = new Date(startDate);
     const end = new Date(endDate);
 
     while (currentDate <= end) {
-      // Format current date to YYYY-MM-DD to match MongoDB output
-      const dateString = currentDate.toISOString().split('T')[0];
+      // FIXED: Safely extract Local YYYY-MM-DD instead of using UTC toISOString()
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
 
       // Find if we have data for this day from DB
       const dbRecord = dailyData.find((d) => d._id === dateString);
 
       // Create a nice label for the frontend graph
-      // If looking at a week, show "Mon". If longer, show "Oct 12"
       const isWeekFilter = filter === 'this_week' || filter === 'last_week';
-      const label = isWeekFilter
-        ? currentDate.toLocaleDateString('en-US', { weekday: 'short' }) // "Mon"
-        : currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); // "Oct 12"
+
+      // If it's just "today", we can format it to say "Today" or show the hour
+      let label = "";
+      if (filter === 'today') {
+        label = "Today";
+      } else {
+        label = isWeekFilter
+          ? currentDate.toLocaleDateString('en-US', { weekday: 'short' })
+          : currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
 
       chartData.push({
-        day: label, // This matches what Recharts expects on the frontend
+        day: label,
         participants: dbRecord ? dbRecord.participantsCount : 0
       });
 
@@ -266,7 +288,7 @@ exports.getParticipantsGraphData = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Participants Graph Error:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -346,8 +368,16 @@ exports.getStatsCardsData = async (req, res) => {
       GameSession.countDocuments(currentMatchSession),
       GameSession.aggregate([
         { $match: { ...currentMatchSession, vehicle: { $exists: true, $ne: null } } },
-        { $group: { _id: "$vehicle", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
+        {
+          $group: {
+            _id: "$vehicle",
+            count: { $sum: 1 },
+            // NEW: Find the absolute fastest time recorded for this vehicle in this timeframe
+            bestTime: { $min: "$timeTaken" }
+          }
+        },
+        // NEW: Sort by count FIRST (highest to lowest), then by bestTime SECOND (lowest/fastest to highest)
+        { $sort: { count: -1, bestTime: 1 } },
         { $limit: 1 }
       ])
     ]);
@@ -410,13 +440,12 @@ exports.getStatsCardsData = async (req, res) => {
 
 exports.getTimingGraphData = async (req, res) => {
   try {
-    // Default to 'all' if no filter is provided
     const { filter = 'all', startDate: customStart, endDate: customEnd } = req.query;
 
     // 1. Create the base match object
     const baseMatch = { status: "COMPLETED" };
 
-    // 2. Only calculate and apply date ranges if the filter is NOT 'all' or 'all_time'
+    // 2. Apply date ranges if the filter is NOT 'all'
     if (filter !== 'all' && filter !== 'all_time') {
       const { startDate, endDate } = getDateRange(filter, customStart, customEnd);
 
@@ -425,40 +454,43 @@ exports.getTimingGraphData = async (req, res) => {
       }
     }
 
-    // 3. Fetch the raw data grouped by hour
+    // 3. Fetch the raw data grouped by local hour (Fixing the UTC issue)
     const hourlyParticipantsData = await GameSession.aggregate([
       { $match: baseMatch },
       {
         $group: {
-          _id: { $hour: "$completedAt" },
+          // Convert the stored UTC time to Indian Standard Time before extracting the hour
+          _id: { $hour: { date: "$completedAt", timezone: "Asia/Kolkata" } },
           participantsCount: { $sum: 1 },
         },
       },
     ]);
 
-    // 4. Initialize your timing buckets to 0
+    // 4. Initialize buckets covering the FULL 24 hours (so no late-night players are ignored)
     const timingGraphData = [
-      { time: "8am", participants: 0 },
-      { time: "10am", participants: 0 },
+      { time: "12am", participants: 0 },
+      { time: "3am", participants: 0 },
+      { time: "6am", participants: 0 },
+      { time: "9am", participants: 0 },
       { time: "12pm", participants: 0 },
-      { time: "2pm", participants: 0 },
-      { time: "4pm", participants: 0 },
+      { time: "3pm", participants: 0 },
       { time: "6pm", participants: 0 },
-      { time: "8pm", participants: 0 },
+      { time: "9pm", participants: 0 },
     ];
 
-    // 5. Populate the buckets with the database results
+    // 5. Populate the buckets
     hourlyParticipantsData.forEach((data) => {
-      const hour = data._id;
+      const hour = data._id; // This is now local IST hour (0 to 23)
       const count = data.participantsCount;
 
-      if (hour >= 8 && hour < 10) timingGraphData[0].participants += count;
-      else if (hour >= 10 && hour < 12) timingGraphData[1].participants += count;
-      else if (hour >= 12 && hour < 14) timingGraphData[2].participants += count;
-      else if (hour >= 14 && hour < 16) timingGraphData[3].participants += count;
-      else if (hour >= 16 && hour < 18) timingGraphData[4].participants += count;
-      else if (hour >= 18 && hour < 20) timingGraphData[5].participants += count;
-      else if (hour >= 20 && hour < 22) timingGraphData[6].participants += count;
+      if (hour >= 0 && hour < 3) timingGraphData[0].participants += count;
+      else if (hour >= 3 && hour < 6) timingGraphData[1].participants += count;
+      else if (hour >= 6 && hour < 9) timingGraphData[2].participants += count;
+      else if (hour >= 9 && hour < 12) timingGraphData[3].participants += count;
+      else if (hour >= 12 && hour < 15) timingGraphData[4].participants += count;
+      else if (hour >= 15 && hour < 18) timingGraphData[5].participants += count;
+      else if (hour >= 18 && hour < 21) timingGraphData[6].participants += count;
+      else if (hour >= 21 && hour <= 23) timingGraphData[7].participants += count;
     });
 
     return res.status(200).json({
@@ -466,14 +498,13 @@ exports.getTimingGraphData = async (req, res) => {
       data: timingGraphData,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Timing Graph Error:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
-
 
 exports.getVehicleGraphData = async (req, res) => {
   try {
@@ -672,6 +703,117 @@ exports.creatAdmin = async (req, res) => {
     });
   }
 }
+
+
+exports.createAdminWithTempPassword = async (req, res) => {
+  try {
+    const { email, userName, fullname } = req.body;
+
+    // 1. Validate fields
+    if (!email || !userName || !fullname) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, username and fullname are required",
+      });
+    }
+
+    // 2. Check existing admin
+    const existingAdmin = await Admin.findOne({
+      $or: [{ email }, { userName }],
+    });
+
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin with this email or username already exists",
+      });
+    }
+
+    // 3. Generate temporary password
+    const tempPassword = crypto.randomBytes(4).toString("hex");
+
+    // 4. Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+
+    // 5. Create admin
+    const newAdmin = new Admin({
+      email,
+      userName,
+      fullname,
+      password: hashedPassword,
+      isTempPassword: true,
+    });
+
+    await newAdmin.save();
+    const loginUrl = `${process.env.ADMIN_PANEL_URL}`;
+    console.log("Admin Panel URL:", loginUrl, newAdmin);
+    // 6. Send email
+    const seneMaillog = await brevoSendMail({
+      to: email,
+      subject: "Your Admin Account Created",
+      html: `
+    <h2>Welcome ${fullname}</h2>
+
+    <p>Your admin account has been created successfully.</p>
+
+    <p>
+      <strong>Username:</strong> ${userName}
+    </p>
+
+    <p>
+      <strong>Temporary Password:</strong> ${tempPassword}
+    </p>
+
+    <p>
+      <a 
+        href="${loginUrl}"
+        style="
+          background:#004B8D;
+          color:white;
+          padding:10px 18px;
+          text-decoration:none;
+          border-radius:6px;
+          display:inline-block;
+          margin-top:10px;
+        "
+      >
+        Login Now
+      </a>
+    </p>
+
+    <p>
+      Or open this URL:
+      <br />
+      ${loginUrl}
+    </p>
+
+    <p>Please login and change your password immediately.</p>
+  `,
+    });
+
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin created and temporary password sent to email",
+      data: {
+        id: newAdmin._id,
+        email: newAdmin.email,
+        userName: newAdmin.userName,
+        fullname: newAdmin.fullname,
+        isActive: newAdmin.isActive
+      },
+    });
+
+  } catch (error) {
+    console.error("Create Admin Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 exports.getAllAdminList = async (req, res) => {
 
@@ -1107,6 +1249,32 @@ exports.forgotPassword = async (req, res) => {
     // Pass the email and the generated OTP to your custom function
     // await sendOtpEmail(admin.email, otp);
 
+
+    // Generate the HTML template
+    const emailHtml = `
+  <div style="font-family: Helvetica, Arial, sans-serif; min-width: 1000px; overflow: auto; line-height: 2">
+    <div style="margin: 50px auto; width: 70%; padding: 20px 0">
+      <div style="border-bottom: 1px solid #eee">
+        <a href="" style="font-size: 1.4em; color: #00466a; text-decoration: none; font-weight: 600">Kanoo Rental Game</a>
+      </div>
+      <p style="font-size: 1.1em">Hi,</p>
+      <p>Use the following OTP to complete your password reset procedures. OTP is valid for 10 minutes.</p>
+      <h2 style="background: #00466a; margin: 0 auto; width: max-content; padding: 0 10px; color: #fff; border-radius: 4px;">${otp}</h2>
+      <p style="font-size: 0.9em;">Regards,<br />Kanoo Rental Game Team</p>
+      <hr style="border: none; border-top: 1px solid #eee" />
+      <div style="float: right; padding: 8px 0; color: #aaa; font-size: 0.8em; line-height: 1; font-weight: 300">
+        <p>Kanoo Rental Game Inc</p>
+      </div>
+    </div>
+  </div>
+`;
+
+    // Call your Brevo utility
+    await brevoSendMail({
+      to: admin.email,
+      subject: "Your Password Reset OTP",
+      html: emailHtml
+    });
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully to your email"

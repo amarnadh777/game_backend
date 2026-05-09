@@ -16,8 +16,8 @@ const Sidebar = ({ isOpen }) => {
   const navItemClasses = ({ isActive }) => 
     `flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm group whitespace-nowrap ${
       isActive 
-        ? 'bg-gradient-to-r from-[#FDF5D3] to-[#FAE070] text-indigo-900 font-bold shadow-lg shadow-black/10 transform scale-[1.02]' 
-        : 'hover:bg-white/10 font-medium text-indigo-100 hover:text-white'
+        ? 'bg-[#FFD100] text-[#004B8D] font-extrabold shadow-sm' 
+        : 'hover:bg-white/10 font-medium text-white/85 hover:text-white'
     }`;
 
   const iconClasses = (isActive) => 

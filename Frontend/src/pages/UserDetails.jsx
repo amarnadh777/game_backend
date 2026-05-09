@@ -387,7 +387,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="bg-gray-50 border border-gray-200 text-gray-600 text-sm py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 w-48"
+                className="bg-white border border-[#D8E2EC] text-gray-600 text-sm py-2.5 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[#004B8D] w-48"
               />
             )}
 
@@ -399,7 +399,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
                   setSearchQuery("");
                   setCurrentPage(1);
                 }}
-                className="appearance-none bg-[#F3F4F6] text-gray-700 text-sm font-medium py-2 px-4 pr-10 rounded-lg outline-none cursor-pointer w-40"
+                className="appearance-none bg-[#EEF4F8] text-gray-700 text-sm font-medium py-2 px-4 pr-10 rounded-lg outline-none cursor-pointer w-40"
               >
                 <option value="" disabled>Filter by list</option>
                 <option value="email">Email</option>
@@ -516,7 +516,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+              className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
             >
               &lt; Previous
             </button>
@@ -546,7 +546,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
             <button
               onClick={handleNextPage}
               disabled={currentPage >= totalPages || totalPages === 0}
-              className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+              className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
             >
               Next &gt;
             </button>
@@ -569,8 +569,8 @@ console.log("phoneCode",selectedUser?.phoneCode);
 
             <div className="bg-[#F1F4F9] py-5 px-10 md:px-20 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center border-y border-gray-100">
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Rank</span>
-                <span className="text-[14px] font-bold text-[#0A3D81]">#{selectedUser?.rank}</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Rank</span>
+                <span className="text-[14px] font-bold text-[#004B8D]">#{selectedUser?.rank}</span>
               </div>
               <div className="flex items-center gap-4 xl:gap-6">
                 <span className="text-[14px] font-bold text-gray-900 shrink-0">Registration Date</span>
@@ -581,7 +581,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
                 <span className="text-[14px] font-medium text-gray-700 whitespace-nowrap">{formatTime(selectedUser?.registerDate)}</span>
               </div>
               <div className="flex items-center gap-4 xl:gap-6">
-                <span className="text-[14px] font-bold text-gray-900 w-12 shrink-0">Status</span>
+                <span className="text-[14px] font-bold text-[#101820] w-12 shrink-0">Status</span>
                 <span className={`text-[14px] font-medium ${selectedUser?.status ? 'text-[#00B050]' : 'text-red-600'}`}>
                   {selectedUser?.status ? 'Active' : 'Disabled'}
                 </span>
@@ -590,18 +590,18 @@ console.log("phoneCode",selectedUser?.phoneCode);
 
             <div className="py-10 px-10 md:px-20 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12 xl:gap-x-24">
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Player</span>
+                <span className="text-[14px] font-bold text-[#101820]">Player</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.player}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Country</span>
+                <span className="text-[14px] font-bold text-[#101820]">Country</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.country}</span>
 
-                <span className="text-[14px] font-bold text-gray-900">Speed</span>
+                <span className="text-[14px] font-bold text-[#101820]">Speed</span>
                 <span className="text-[14px] font-medium text-gray-700">{selectedUser?.speed}</span>
               </div>
 
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Email</span>
+                <span className="text-[14px] font-bold text-[#101820]">Email</span>
                 <span className="text-[14px] font-medium text-gray-700 truncate" title={selectedUser?.email}>{selectedUser?.email}</span>
 
                 <span className="text-[14px] font-bold text-gray-900">Phone number</span>
@@ -618,7 +618,7 @@ console.log("phoneCode",selectedUser?.phoneCode);
             <div className="pb-8 pt-4 flex justify-center">
               <button
                 onClick={closeModal}
-                className="border border-[#004785] text-gray-700 hover:bg-gray-50 text-[13px] font-medium py-2 px-10 rounded-[8px] transition-colors active:scale-95"
+                className="border border-[#004B8D] text-gray-700 hover:bg-gray-50 text-[13px] font-medium py-2 px-10 rounded-[8px] transition-colors active:scale-95"
               >
                 Close
               </button>

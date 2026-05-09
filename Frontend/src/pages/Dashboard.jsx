@@ -30,8 +30,8 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center bg-[#EBF5FF]">
-        <div className="w-12 h-12 border-4 border-[#2840B6] border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-full min-h-screen flex items-center justify-center bg-[#F4F8FC]">
+        <div className="w-12 h-12 border-4 border-[#004B8D] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

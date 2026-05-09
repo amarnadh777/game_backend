@@ -4,6 +4,47 @@ const OTP = require("../models/otpModel")
 const axios = require("axios")
 const nodemailer = require('nodemailer')
 const sendOtpEmail = require("../helper/sendEMail")
+const { verifyPassword } = require("../helper/password")
+
+const normalizeName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+const slugName = (value) =>
+  normalizeName(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+
+const buildSimplePlayerEmail = (firstName, lastName) => {
+  const first = slugName(firstName) || "player";
+  const last = slugName(lastName) || "guest";
+  return `${first}.${last}@simple.kdr-games.local`;
+};
+
+const toSimpleUser = (user) => ({
+  _id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  country: user.country,
+  city: user.city,
+  status: user.status,
+  isEmailVerified: user.isEmailVerified,
+});
+
+const toAuthUser = (user) => ({
+  _id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  country: user.country,
+  city: user.city,
+  phoneNumber: user.phoneNumber,
+  status: user.status,
+  role: user.role || "user",
+  isEmailVerified: user.isEmailVerified,
+});
+
+const signUserToken = (user) => jwt.sign({ userId: user._id, role: user.role || "user" }, process.env.JWT_SECRET);
 // exports.register = async (req, res) => {
 
 //     try {
@@ -537,9 +578,60 @@ exports.resendOtp = async (req, res) => {
 };
 
 
+exports.adminLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                errorCode: "MISSING_FIELDS",
+                message: "Email and password are required"
+            });
+        }
+
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail, role: "admin" });
+
+        if (!user || !verifyPassword(password, user.password)) {
+            return res.status(400).json({
+                success: false,
+                errorCode: "INVALID_CREDENTIALS",
+                message: "Invalid email or password"
+            });
+        }
+
+        if (user.status === false) {
+            return res.status(403).json({
+                success: false,
+                errorCode: "ACCOUNT_DISABLED",
+                message: "Your account has been disabled by the administrator."
+            });
+        }
+
+        const token = signUserToken(user);
+
+        return res.status(200).json({
+            success: true,
+            message: "Admin logged in successfully",
+            data: {
+                user: toAuthUser(user)
+            },
+            token
+        });
+    } catch (error) {
+        console.error("Admin Login Error:", error);
+        return res.status(500).json({
+            success: false,
+            errorCode: "SERVER_ERROR",
+            message: error.message
+        });
+    }
+};
+
 exports.login = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, password } = req.body;
         
         if (!email) {
             return res.status(400).json({ 
@@ -549,7 +641,8 @@ exports.login = async (req, res) => {
             });   
         }
 
-        const user = await User.findOne({ email });
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
         
         if (!user) {
             return res.status(400).json({ 
@@ -557,6 +650,24 @@ exports.login = async (req, res) => {
                 errorCode: "INVALID_CREDENTIALS", // <--- Custom Code
                 message: "Invalid email" 
             });
+        }
+
+        if ((user.role || "user") === "admin") {
+            if (!password) {
+                return res.status(400).json({
+                    success: false,
+                    errorCode: "PASSWORD_REQUIRED",
+                    message: "Password is required for admin login"
+                });
+            }
+
+            if (!verifyPassword(password, user.password)) {
+                return res.status(400).json({
+                    success: false,
+                    errorCode: "INVALID_CREDENTIALS",
+                    message: "Invalid email or password"
+                });
+            }
         }
 
         // 🚨 CHECK 1: Disabled by Admin
@@ -585,7 +696,7 @@ exports.login = async (req, res) => {
         res.status(200).json({ 
             success: true,
             message: "User logged in successfully", 
-            user,
+            user: toAuthUser(user),
             token: token
         });
 

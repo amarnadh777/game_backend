@@ -94,13 +94,13 @@ const ExportModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-[650px] shadow-2xl relative border border-gray-200">
+    <div className="fixed inset-0 bg-[#004B8D]/45 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-[650px] rounded-lg shadow-2xl relative border border-[#D8E2EC]">
         
         {/* Header */}
-        <div className="relative py-4 border-b border-gray-200 flex justify-center items-center">
-          <h2 className="text-base font-bold text-black tracking-wide">Choose data range to export data</h2>
-          <button onClick={onClose} className="absolute right-4 text-gray-500 hover:text-black transition-colors p-1">
+        <div className="relative py-4 border-b border-[#D8E2EC] flex justify-center items-center">
+          <h2 className="text-base font-bold text-[#101820] tracking-wide">Choose data range to export data</h2>
+          <button onClick={onClose} className="absolute right-4 text-gray-500 hover:text-[#004B8D] transition-colors p-1">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -109,14 +109,14 @@ const ExportModal = ({ isOpen, onClose }) => {
 
         {/* Content Body */}
         <div className="p-6">
-          <div className="border border-gray-200 rounded p-4 mb-4 select-none">
+          <div className="border border-[#D8E2EC] rounded-lg p-4 mb-4 select-none">
             
             {/* Selected Range Display */}
-            <div className="flex items-center justify-center gap-6 mb-6 text-sm font-bold text-black">
+            <div className="flex items-center justify-center gap-6 mb-6 text-sm font-bold text-[#101820]">
               <span className={!startDate ? "text-gray-400" : ""}>
                 {formatForDisplay(startDate)}
               </span>
-              <span className="text-gray-400">→</span>
+              <span className="text-gray-400">to</span>
               <span className={!endDate ? "text-gray-400" : ""}>
                 {formatForDisplay(endDate)}
               </span>
@@ -126,9 +126,9 @@ const ExportModal = ({ isOpen, onClose }) => {
             <div className="flex flex-col md:flex-row gap-8 md:gap-0">
               
               {/* LEFT CALENDAR */}
-              <div className="flex-1 md:pr-4 md:border-r border-gray-200">
+              <div className="flex-1 md:pr-4 md:border-r border-[#D8E2EC]">
                 <div className="flex items-center justify-between mb-4">
-                  <button onClick={handlePrevMonth} className="text-gray-400 hover:text-black p-1">
+                  <button onClick={handlePrevMonth} className="text-gray-400 hover:text-[#004B8D] p-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                   </button>
                   <div className="flex items-center gap-2">
@@ -158,9 +158,9 @@ const ExportModal = ({ isOpen, onClose }) => {
                            onClick={() => handleDayClick(d.date)}
                            className={`
                              flex items-center justify-center w-7 h-7 text-xs z-10 cursor-pointer
-                             ${!d.current ? 'text-gray-300 hover:text-gray-600' : 'text-black hover:bg-gray-200'}
-                             ${(isStart || isEnd) ? 'bg-black text-white rounded-full hover:bg-gray-800' : 'rounded-full'}
-                             ${(isToday && !isStart && !isEnd) ? 'border border-black' : ''}
+                             ${!d.current ? 'text-gray-300 hover:text-gray-600' : 'text-[#101820] hover:bg-[#F4F8FC]'}
+                             ${(isStart || isEnd) ? 'bg-[#004B8D] text-white rounded-full hover:bg-[#003A6F]' : 'rounded-full'}
+                             ${(isToday && !isStart && !isEnd) ? 'border border-[#004B8D]' : ''}
                            `}
                          >
                            {d.day}
@@ -180,7 +180,7 @@ const ExportModal = ({ isOpen, onClose }) => {
                     <span className="text-sm font-bold">{MONTHS[(viewDate.getMonth() + 1) % 12]}</span>
                     <span className="text-sm font-bold">{viewDate.getMonth() === 11 ? viewDate.getFullYear() + 1 : viewDate.getFullYear()}</span>
                   </div>
-                  <button onClick={handleNextMonth} className="text-gray-400 hover:text-black p-1">
+                  <button onClick={handleNextMonth} className="text-gray-400 hover:text-[#004B8D] p-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                   </button>
                 </div>
@@ -204,9 +204,9 @@ const ExportModal = ({ isOpen, onClose }) => {
                            onClick={() => handleDayClick(d.date)}
                            className={`
                              flex items-center justify-center w-7 h-7 text-xs z-10 cursor-pointer
-                             ${!d.current ? 'text-gray-300 hover:text-gray-600' : 'text-black hover:bg-gray-200'}
-                             ${(isStart || isEnd) ? 'bg-black text-white rounded-full hover:bg-gray-800' : 'rounded-full'}
-                             ${(isToday && !isStart && !isEnd) ? 'border border-black' : ''}
+                             ${!d.current ? 'text-gray-300 hover:text-gray-600' : 'text-[#101820] hover:bg-[#F4F8FC]'}
+                             ${(isStart || isEnd) ? 'bg-[#004B8D] text-white rounded-full hover:bg-[#003A6F]' : 'rounded-full'}
+                             ${(isToday && !isStart && !isEnd) ? 'border border-[#004B8D]' : ''}
                            `}
                          >
                            {d.day}
@@ -224,7 +224,7 @@ const ExportModal = ({ isOpen, onClose }) => {
           <div className="flex justify-center mt-6 mb-2">
             <button 
               onClick={handleDownload}
-              className="bg-black hover:bg-gray-800 text-white text-xs font-bold py-2 px-8 rounded-sm shadow transition-colors"
+              className="bg-[#FFD100] hover:bg-[#E5BC00] text-[#101820] text-xs font-bold py-2 px-8 rounded-lg shadow transition-colors"
             >
               Download
             </button>

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ExportModal from '../components/ExportModal';
 import toast from 'react-hot-toast';
 
@@ -8,10 +8,10 @@ const ImageWithLoading = ({ src, alt, className }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   return (
-    <div className="relative w-full h-full bg-slate-100 flex items-center justify-center overflow-hidden">
+    <div className="relative w-full h-full bg-[#F4F8FC] flex items-center justify-center overflow-hidden">
       {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 animate-pulse z-0">
-          <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#F4F8FC] animate-pulse z-0">
+          <svg className="animate-spin h-5 w-5 text-[#004B8D]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -111,7 +111,7 @@ const DashboardBanner = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [searchQuery, setSearchQuery] = useState(""); 
+  const [searchQuery] = useState(""); 
   const itemsPerPage = 10; 
   
   // --- MODAL STATE ---
@@ -160,16 +160,7 @@ const DashboardBanner = () => {
     car.name.toLowerCase().includes(carSearchQuery.toLowerCase())
   );
 
-  // --- FETCH BANNERS WITH DEBOUNCE EFFECT ---
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchBanners();
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [currentPage, searchQuery]);
-
- const fetchBanners = async () => {
+ const fetchBanners = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/banner/list?page=${currentPage}&limit=${itemsPerPage}&search=${searchQuery}`);
@@ -195,7 +186,16 @@ const DashboardBanner = () => {
     } finally {
       setIsLoading(false); 
     }
-  };
+  }, [currentPage, itemsPerPage, searchQuery]);
+
+  // --- FETCH BANNERS WITH DEBOUNCE EFFECT ---
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchBanners();
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [fetchBanners]);
 
   // --- PAGINATION HANDLERS ---
   const handlePrevPage = () => {
@@ -465,27 +465,26 @@ const DashboardBanner = () => {
     }
   };
   return (
-    // Replaced layout wrapper with the light blue background spanning full width
-    <div className="w-full min-h-screen p-6 md:p-8 bg-[#EBF5FF] flex flex-col gap-4">
+    <div className="w-full min-h-screen p-6 md:p-8 bg-[#F4F8FC] flex flex-col gap-4">
       
       {/* Page Title */}
-      <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-wide mb-2">
+      <h1 className="text-xl md:text-2xl font-bold text-[#101820] tracking-wide mb-2">
         Welcome To Kanoo Daily Rental
       </h1>
 
       {/* Main White Card Container */}
-      <div className="bg-white rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden border border-white">
+      <div className="bg-white rounded-lg shadow-sm flex flex-col flex-1 overflow-hidden border border-[#D8E2EC]">
         
         {/* Card Header (Title & Button) */}
         <div className="px-6 py-5 flex items-center justify-between">
-          <h2 className="text-[18px] font-bold text-gray-900">
+          <h2 className="text-[18px] font-bold text-[#101820]">
             Banner Details
           </h2>
           
           {/* Yellow Upload Button */}
           <button 
             onClick={openAddModal}
-            className="bg-gradient-to-r from-[#FDE57E] to-[#F1C82A] text-slate-800 text-sm font-semibold py-2 px-5 rounded-lg transition-transform active:scale-95 flex items-center gap-2"
+            className="bg-[#FFD100] hover:bg-[#E5BC00] text-[#101820] text-sm font-semibold py-2 px-5 rounded-lg transition-transform active:scale-95 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -500,7 +499,7 @@ const DashboardBanner = () => {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               {/* Light gray header background */}
-              <tr className="bg-[#F3F4F6]">
+              <tr className="bg-[#EEF4F8]">
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-32">Image</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Banner Name</th>
                 {/* Adjusted widths to fit the new layout */}
@@ -524,7 +523,7 @@ const DashboardBanner = () => {
                   
                   {/* Image Column */}
                   <td className="py-4 px-6">
-                    <div className="w-[60px] h-[40px] bg-white rounded border border-gray-200 overflow-hidden flex items-center justify-center shadow-sm">
+                    <div className="w-[60px] h-[40px] bg-white rounded border border-[#D8E2EC] overflow-hidden flex items-center justify-center shadow-sm">
                        {banner.isCarSpecific && banner.carImages?.length > 0 ? (
                          // ✅ Show first car's image if it's car specific
                          <ImageWithLoading 
@@ -606,7 +605,7 @@ const DashboardBanner = () => {
 
                     {/* Edit & Delete Icons grouped together */}
                     <div className="flex items-center gap-3">
-                      <button onClick={() => openEditModal(banner)} className="text-gray-500 hover:text-blue-600 transition-colors" title="Edit">
+                      <button onClick={() => openEditModal(banner)} className="text-gray-500 hover:text-[#004B8D] transition-colors" title="Edit">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
                       <button onClick={() => openDeleteModal(banner)} className="text-gray-500 hover:text-red-600 transition-colors" title="Delete">
@@ -632,7 +631,7 @@ const DashboardBanner = () => {
               <button 
                 onClick={handlePrevPage}
                 disabled={currentPage === 1}
-                className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+                className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
               >
                 &lt; Previous
               </button>
@@ -646,7 +645,7 @@ const DashboardBanner = () => {
                        onClick={() => setCurrentPage(pageNumber)}
                        className={`min-w-[28px] h-[28px] rounded px-2 transition-colors text-[13px] ${
                          currentPage === pageNumber
-                           ? "bg-[#0A3D81] text-white font-medium"
+                           ? "bg-[#004B8D] text-white font-medium"
                            : "text-gray-600 hover:bg-gray-100"
                        }`}
                      >
@@ -662,7 +661,7 @@ const DashboardBanner = () => {
               <button 
                 onClick={handleNextPage}
                 disabled={currentPage >= totalPages}
-                className="px-2 py-1.5 text-gray-600 hover:text-blue-600 text-[13px] font-medium disabled:opacity-50 flex items-center"
+                className="px-2 py-1.5 text-gray-600 hover:text-[#004B8D] text-[13px] font-medium disabled:opacity-50 flex items-center"
               >
                 Next &gt;
               </button>
@@ -673,11 +672,11 @@ const DashboardBanner = () => {
 
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0b0c5b]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 overflow-y-auto">
+        <div className="fixed inset-0 bg-[#004B8D]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 overflow-y-auto">
           
-          <div className="bg-white shadow-2xl rounded-xl w-full max-w-[1200px] my-8 overflow-hidden border border-gray-200 transform transition-all scale-100 relative">
+          <div className="bg-white shadow-2xl rounded-lg w-full max-w-[1200px] my-8 overflow-hidden border border-[#D8E2EC] transform transition-all scale-100 relative">
             <div className="p-8 md:p-10 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-[18px] font-bold text-gray-900 mb-8 tracking-wide">
+              <h2 className="text-[18px] font-bold text-[#101820] mb-8 tracking-wide">
                 {editingId ? 'Edit banner placement' : 'Create new banner'}
               </h2>
 
@@ -706,7 +705,7 @@ const DashboardBanner = () => {
                             name="name"
                             value={formData.name}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none appearance-none bg-white text-gray-700 shadow-sm cursor-pointer focus:border-[#0A3D81]"
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none appearance-none bg-white text-gray-700 shadow-sm cursor-pointer focus:border-[#004B8D]"
                             required
                           >
                             <option value="" disabled>Choose from list</option>
@@ -722,13 +721,13 @@ const DashboardBanner = () => {
 
                       {/* ✅ ADD REFERENCE IMAGE PREVIEW HERE */}
                       {BANNER_MAPPING.find(b => b.name === formData.name)?.referenceImage && (
-                        <div className="mt-4 p-3 bg-[#EEF1F6] border border-gray-200 rounded-lg shadow-inner animate-in fade-in duration-300">
+                        <div className="mt-4 p-3 bg-[#F4F8FC] border border-[#D8E2EC] rounded-lg shadow-inner animate-in fade-in duration-300">
                           <div className="flex justify-between items-center mb-1.5">
                             <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                               Game Position Reference
                             </label>
                           </div>
-                          <div className="w-full h-[120px] bg-slate-200 rounded overflow-hidden flex items-center justify-center border border-gray-300 relative">
+                          <div className="w-full h-[120px] bg-[#EEF4F8] rounded overflow-hidden flex items-center justify-center border border-[#D8E2EC] relative">
                             {/* Loading spinner while image fetches */}
                             <div className="absolute inset-0 flex items-center justify-center animate-pulse z-0">
                                <span className="text-xs text-gray-400 font-medium">Loading map view...</span>
@@ -754,15 +753,15 @@ const DashboardBanner = () => {
                       <label className="block text-[13px] font-bold text-gray-800 mb-3">Apply to specific cars?</label>
                       <div className="flex items-center gap-6">
                         <label className="flex items-center gap-2 cursor-pointer group">
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${!applyToSpecificCars ? 'border-[#0A3D81]' : 'border-gray-400 group-hover:border-[#0A3D81]'}`}>
-                            {!applyToSpecificCars && <div className="w-2.5 h-2.5 bg-[#0A3D81] rounded-full"></div>}
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${!applyToSpecificCars ? 'border-[#004B8D]' : 'border-gray-400 group-hover:border-[#004B8D]'}`}>
+                            {!applyToSpecificCars && <div className="w-2.5 h-2.5 bg-[#004B8D] rounded-full"></div>}
                           </div>
                           <input type="radio" checked={!applyToSpecificCars} onChange={() => setApplyToSpecificCars(false)} className="hidden" />
                           <span className="text-[13px] text-gray-800 font-medium">No</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer group">
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${applyToSpecificCars ? 'border-[#0A3D81]' : 'border-gray-400 group-hover:border-[#0A3D81]'}`}>
-                            {applyToSpecificCars && <div className="w-2.5 h-2.5 bg-[#0A3D81] rounded-full"></div>}
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${applyToSpecificCars ? 'border-[#004B8D]' : 'border-gray-400 group-hover:border-[#004B8D]'}`}>
+                            {applyToSpecificCars && <div className="w-2.5 h-2.5 bg-[#004B8D] rounded-full"></div>}
                           </div>
                           <input type="radio" checked={applyToSpecificCars} onChange={() => setApplyToSpecificCars(true)} className="hidden" />
                           <span className="text-[13px] text-gray-800 font-medium">Yes</span>
@@ -788,7 +787,7 @@ const DashboardBanner = () => {
                             />
                             <label 
                               htmlFor="file-upload"
-                              className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[13px] px-4 py-2 rounded border border-gray-200 cursor-pointer transition-colors shrink-0"
+                              className="bg-white hover:bg-[#F4F8FC] text-gray-700 text-[13px] px-4 py-2 rounded border border-[#D8E2EC] cursor-pointer transition-colors shrink-0"
                             >
                               Choose file
                             </label>
@@ -805,8 +804,8 @@ const DashboardBanner = () => {
                         <label className="block text-[13px] font-bold text-gray-800 mb-3">Status</label>
                         <div className="flex items-center gap-6 mt-1">
                           <label className="flex items-center gap-2 cursor-pointer group">
-                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${formData.status ? 'border-[#0A3D81]' : 'border-gray-400 group-hover:border-[#0A3D81]'}`}>
-                              {formData.status && <div className="w-2.5 h-2.5 bg-[#0A3D81] rounded-full"></div>}
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${formData.status ? 'border-[#004B8D]' : 'border-gray-400 group-hover:border-[#004B8D]'}`}>
+                              {formData.status && <div className="w-2.5 h-2.5 bg-[#004B8D] rounded-full"></div>}
                             </div>
                             <input 
                               type="radio" 
@@ -819,8 +818,8 @@ const DashboardBanner = () => {
                             <span className="text-[13px] text-gray-800 font-medium">Active</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer group">
-                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${!formData.status ? 'border-[#0A3D81]' : 'border-gray-400 group-hover:border-[#0A3D81]'}`}>
-                              {!formData.status && <div className="w-2.5 h-2.5 bg-[#0A3D81] rounded-full"></div>}
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${!formData.status ? 'border-[#004B8D]' : 'border-gray-400 group-hover:border-[#004B8D]'}`}>
+                              {!formData.status && <div className="w-2.5 h-2.5 bg-[#004B8D] rounded-full"></div>}
                             </div>
                             <input 
                               type="radio" 
@@ -842,12 +841,12 @@ const DashboardBanner = () => {
                   {!applyToSpecificCars ? (
                     <div className="flex-1">
                       <label className="block text-[13px] font-bold text-gray-800 mb-2">Banner Preview</label>
-                      <div className="w-full h-[220px] bg-[#EEF1F6] border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center shadow-inner relative">
+                      <div className="w-full h-[220px] bg-[#F4F8FC] border border-[#D8E2EC] rounded-lg overflow-hidden flex items-center justify-center shadow-inner relative">
                         {(formData.file || formData.imageUrl) ? (
                           <>
                             {!imagePrevLoaded && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-[#EEF1F6] animate-pulse z-0">
-                                <svg className="animate-spin h-6 w-6 text-[#0A3D81]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                              <div className="absolute inset-0 flex items-center justify-center bg-[#F4F8FC] animate-pulse z-0">
+                                <svg className="animate-spin h-6 w-6 text-[#004B8D]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                               </div>
                             )}
                             <img 
@@ -871,21 +870,21 @@ const DashboardBanner = () => {
 
                 {/* --- SPECIFIC CARS GRID UI (Only visible when Yes is selected) --- */}
                 {applyToSpecificCars && (
-                  <div className="mb-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="mb-10 p-6 bg-[#F4F8FC] rounded-lg border border-[#D8E2EC]">
                     
                     {/* Search & Bulk Actions */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                       <div className="relative w-full md:w-1/3">
                         <input 
                           type="text" 
-                          placeholder="Search Car 🔍" 
+                          placeholder="Search car" 
                           value={carSearchQuery}
                           onChange={handleCarSearch}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-[13px] outline-none focus:border-[#0A3D81]"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-[13px] outline-none focus:border-[#004B8D]"
                         />
                       </div>
                       <div className="flex gap-3">
-                        <button type="button" onClick={() => toggleSelectAllCars(true)} className="text-[13px] font-semibold text-[#0A3D81] hover:underline">Select All</button>
+                        <button type="button" onClick={() => toggleSelectAllCars(true)} className="text-[13px] font-semibold text-[#004B8D] hover:underline">Select All</button>
                         <span className="text-gray-300">|</span>
                         <button type="button" onClick={() => toggleSelectAllCars(false)} className="text-[13px] font-semibold text-red-600 hover:underline">Clear All</button>
                       </div>
@@ -894,7 +893,7 @@ const DashboardBanner = () => {
                     {/* Car Cards Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {filteredCars.map((car) => (
-                        <div key={car.id} className={`bg-white border rounded-xl p-4 flex flex-col gap-4 shadow-sm transition-colors ${car.enabled ? 'border-[#0A3D81] ring-1 ring-[#0A3D81]/20' : 'border-gray-200'}`}>
+                        <div key={car.id} className={`bg-white border rounded-lg p-4 flex flex-col gap-4 shadow-sm transition-colors ${car.enabled ? 'border-[#004B8D] ring-1 ring-[#004B8D]/20' : 'border-[#D8E2EC]'}`}>
                           
                           {/* Card Header (Name + Toggle) */}
                           <div className="flex justify-between items-center">
@@ -904,7 +903,7 @@ const DashboardBanner = () => {
                                 type="checkbox" 
                                 checked={car.enabled} 
                                 onChange={() => toggleSpecificCar(car.id)} 
-                                className="w-4 h-4 rounded text-[#0A3D81] focus:ring-[#0A3D81] border-gray-300 cursor-pointer" 
+                                className="w-4 h-4 rounded text-[#004B8D] focus:ring-[#004B8D] border-gray-300 cursor-pointer" 
                               />
                               <span className="text-[12px] font-medium text-gray-600">Enable</span>
                             </label>
@@ -928,7 +927,7 @@ const DashboardBanner = () => {
                           </div>
 
                           {/* Image Preview */}
-                          <div className={`h-28 bg-[#EEF1F6] rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden ${!car.enabled ? 'opacity-50' : ''}`}>
+                          <div className={`h-28 bg-[#F4F8FC] rounded-lg border border-[#D8E2EC] flex items-center justify-center overflow-hidden ${!car.enabled ? 'opacity-50' : ''}`}>
                             {car.preview ? (
                               <img src={car.preview} className="w-full h-full object-contain bg-white" alt={`${car.name} preview`} />
                             ) : (
@@ -948,7 +947,7 @@ const DashboardBanner = () => {
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="bg-[#0b0c5b] hover:bg-blue-950 text-white w-36 py-2.5 rounded-lg text-[14px] font-semibold transition-all active:scale-95 flex justify-center items-center gap-2"
+                    className="bg-[#004B8D] hover:bg-[#003A6F] text-white w-36 py-2.5 rounded-lg text-[14px] font-semibold transition-all active:scale-95 flex justify-center items-center gap-2"
                   >
                     {isSubmitting ? 'Saving...' : 'Save'}
                   </button>
@@ -967,24 +966,24 @@ const DashboardBanner = () => {
       )}
       {/* --- DELETE CONFIRMATION MODAL --- */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95 duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center border border-white/20">
-            <h3 className="text-xl font-extrabold text-slate-800 mb-2 tracking-tight">Delete Banner?</h3>
+        <div className="fixed inset-0 bg-[#004B8D]/45 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center border border-[#D8E2EC]">
+            <h3 className="text-xl font-extrabold text-[#101820] mb-2 tracking-tight">Delete Banner?</h3>
             <p className="text-sm text-slate-500 mb-8 font-medium">
-              Are you sure you want to remove <strong className="text-slate-800">{deletingBanner?.name}</strong>? This action is permanent.
+              Are you sure you want to remove <strong className="text-[#101820]">{deletingBanner?.name}</strong>? This action is permanent.
             </p>
             <div className="flex flex-col gap-3">
               <button 
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="w-full px-6 py-3 text-sm font-bold text-white bg-[#990000] hover:bg-red-800 rounded-xl transition-all shadow-md active:scale-95"
+                className="w-full px-6 py-3 text-sm font-bold text-white bg-[#990000] hover:bg-red-800 rounded-lg transition-all shadow-md active:scale-95"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, Delete Banner'}
               </button>
               <button 
                 onClick={closeDeleteModal}
                 disabled={isDeleting}
-                className="w-full px-6 py-3 text-sm font-bold border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl transition-all active:scale-95"
+                className="w-full px-6 py-3 text-sm font-bold border border-[#D8E2EC] text-slate-600 bg-white hover:bg-[#F4F8FC] rounded-lg transition-all active:scale-95"
               >
                 Cancel
               </button>

@@ -1,1 +1,24 @@
+@import url("https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@300;400;500;700;800;900&display=swap");
 @import "tailwindcss";
+
+:root {
+  --kdr-blue: #004b8d;
+  --kdr-yellow: #ffd100;
+  --kdr-black: #000000;
+  --kdr-ink: #101820;
+  --kdr-page: #f4f8fc;
+  --kdr-border: #d8e2ec;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "M PLUS 1p", Verdana, Arial, sans-serif;
+  color: var(--kdr-ink);
+  background: var(--kdr-page);
+}

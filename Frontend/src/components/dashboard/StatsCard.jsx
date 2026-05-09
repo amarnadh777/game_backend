@@ -14,11 +14,11 @@ const StatCard = ({ title, value, trend, icon: Icon, onTimeFilterChange }) => {
   };
 
   return (
-    <div className="bg-white p-5 xl:p-6 rounded-xl shadow-sm flex justify-between items-start transition-all hover:shadow-md h-[130px]">
+    <div className="bg-white p-5 xl:p-6 rounded-lg border border-[#D8E2EC] shadow-sm flex justify-between items-start transition-all hover:shadow-md h-[130px]">
       
       <div className="flex flex-col justify-between h-full w-full min-w-0 pr-2">
         
-        <h3 className="text-[13px] font-semibold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">
+        <h3 className="text-[13px] font-semibold text-[#101820] leading-tight min-h-[34px]">
           {title}
         </h3>
         

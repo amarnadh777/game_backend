@@ -21,7 +21,7 @@ const Header = ({ toggleSidebar }) => {
   };
 
   return (
-    <header className="w-full h-[100px] bg-[#11087C] px-6 py-4 flex items-center justify-between z-50">
+    <header className="w-full h-[88px] bg-white border-b border-[#D8E2EC] px-6 py-4 flex items-center justify-between z-50">
       
       {/* Left Side: Menu Icon & Logo */}
       <div className="flex items-center gap-6">

@@ -433,12 +433,15 @@ exports.getGameLeaderBord = async (req, res) => {
       };
     }
 
-    // Dynamic sorting
+    // ==========================================
+    // UPDATED: Dynamic sorting logic
+    // ==========================================
     let sortStage = {};
 
     if (sortBy === 'speed') {
       const order = sortOrder === 'asc' ? 1 : -1;
       sortStage = {
+        hasPlayed: -1, // Keep players at top
         "sessionData.highestSpeed": order,
         "sessionData.timeTaken": 1
       };
@@ -446,12 +449,21 @@ exports.getGameLeaderBord = async (req, res) => {
     else if (sortBy === 'finished') {
       const order = sortOrder === 'asc' ? 1 : -1;
       sortStage = {
+        hasPlayed: -1, // Keep players at top
         "sessionData.timeTaken": order,
         "sessionData.highestSpeed": -1
       };
     }
+    else if (sortBy === 'registerDate') {
+      const order = sortOrder === 'asc' ? 1 : -1;
+      sortStage = {
+        createdAt: order // ONLY sort by date. Ignores hasPlayed!
+      };
+    }
     else {
       sortStage = {
+        hasPlayed: -1, // Default: keep players at top
+        "sessionData.highestSpeed": -1,
         "sessionData.timeTaken": 1,
         createdAt: -1
       };
@@ -479,7 +491,7 @@ exports.getGameLeaderBord = async (req, res) => {
           preserveNullAndEmptyArrays: true
         }
       },
-      // Push users with no session to the bottom
+      // Push users with no session to the bottom (conditionally used by sortStage)
       {
         $addFields: {
           hasPlayed: {
@@ -488,10 +500,10 @@ exports.getGameLeaderBord = async (req, res) => {
         }
       },
       {
-        $sort: {
-          hasPlayed: -1,
-          ...sortStage
-        }
+        // ==========================================
+        // UPDATED: Completely dynamic sort stage
+        // ==========================================
+        $sort: sortStage
       },
       {
         $facet: {

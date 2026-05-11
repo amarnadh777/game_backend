@@ -230,6 +230,8 @@ exports.register = async (req, res) => {
     // ✅ Send Email
     await sendOtpEmail(normalizedEmail, otp, firstName);
 
+
+
     // ✅ Response
     return res.status(200).json({
       success: true,
@@ -265,15 +267,16 @@ exports.simpleUserCreate = async (req, res) => {
         message: "First name, last name and country are required",
       });
     }
+    const normalizedFirstName = firstName.trim().toLowerCase();
+const normalizedLastName = lastName.trim().toLowerCase();
 
     const normalizedEmail = email ? email.toLowerCase().trim() : null;
 
     // 🔥 Check existing user
-    const existingUser = await User.findOne({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-    
-    });
+   const existingUser = await User.findOne({
+  firstName: normalizedFirstName,
+  lastName: normalizedLastName,
+});
 
     // ❌ If exists → send message (NO LOGIN)
     if (existingUser) {
@@ -285,14 +288,14 @@ exports.simpleUserCreate = async (req, res) => {
     }
 
     // 🆕 Create new user
-    const user = await User.create({
-      firstName,
-      lastName,
-      email: normalizedEmail,
-      country,
-      city,
-      phoneNumber,
-    });
+   const user = await User.create({
+  firstName: normalizedFirstName,
+  lastName: normalizedLastName,
+  email: normalizedEmail,
+  country,
+  city,
+  phoneNumber,
+});
 
     // 🔐 Generate token
     const token = jwt.sign(
@@ -328,11 +331,14 @@ exports.nameLogin = async (req, res) => {
       });
     }
 //ss
+
+const normalizedFirstName = firstName.trim().toLowerCase();
+const normalizedLastName = lastName.trim().toLowerCase();
     // 🔍 Find user
-    const user = await User.findOne({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-    });
+   const user = await User.findOne({
+  firstName: normalizedFirstName,
+  lastName: normalizedLastName,
+});
 
     if (!user) {
       return res.status(404).json({

@@ -201,19 +201,20 @@ function Dashboard() {
 
       {/* ROW 1: Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-        <StatCard
-          title="Total number of participants"
-          value={statsData?.totalParticipants ?? '0'}
-          trend={statsData?.participantGrowth}
-          trendLabel={statsData?.trendLabel}
-          icon={Users}
-        />
+       
         <StatCard
           title="Total number of registration"
           value={statsData?.totalUsers ?? '0'}
           trend={statsData?.registrationGrowth}
           trendLabel={statsData?.trendLabel}
           icon={UserPlus}
+        />
+         <StatCard
+          title="Total number of participants"
+          value={statsData?.totalParticipants ?? '0'}
+          trend={statsData?.participantGrowth}
+          trendLabel={statsData?.trendLabel}
+          icon={Users}
         />
         <StatCard
           title="Game Replay"

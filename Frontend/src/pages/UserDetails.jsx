@@ -370,7 +370,14 @@ const UserDetails = () => {
               <tr className="bg-[#F3F4F6]">
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700 w-16">Rank</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Player</th>
-                <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Registered Date</th>
+              <th
+  className="py-3 px-6 text-[13px] font-bold text-gray-700 cursor-pointer hover:bg-gray-200 transition-colors select-none"
+  onClick={() => requestSort('registerDate')}
+>
+  <div className="flex items-center">
+    Registered Date <SortIcon columnKey="registerDate" />
+  </div>
+</th>
                 <th className="py-3 px-6 text-[13px] font-bold text-gray-700">Country</th>
 
                 <th
@@ -561,7 +568,7 @@ const UserDetails = () => {
               </div>
 
               <div className="grid grid-cols-[120px_1fr] gap-y-6 items-center">
-                <span className="text-[14px] font-bold text-gray-900">Preferred Vehicle</span>
+                <span className="text-[14px] font-bold text-gray-900">Vehicle</span>
                 <span className="text-[14px] font-medium text-gray-700">{CAR_NAME_MAP[selectedUser?.vehicle] || "N/A"}</span>
               </div>
             </div>

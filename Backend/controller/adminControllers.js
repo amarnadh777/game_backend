@@ -5,7 +5,8 @@ const jwt = require("jsonwebtoken");
 const Admin = require("../models/adminModel");
 const getDateRange = require("../utils/utils");
 const crypto = require('crypto');
-const brevoSendMail = require("../helper/sendEmailBrevo")
+const brevoSendMail = require("../helper/sendEmailBrevo");
+const awsSendMail = require("../helper/awsSendMail");
 exports.analytics = async (req, res) => {
   try {
     // Dates for "Today vs Yesterday" growth calculations
@@ -749,48 +750,22 @@ exports.createAdminWithTempPassword = async (req, res) => {
     const loginUrl = `${process.env.ADMIN_PANEL_URL}`;
     console.log("Admin Panel URL:", loginUrl, newAdmin);
     // 6. Send email
-    const seneMaillog = await brevoSendMail({
-      to: email,
-      subject: "Your Admin Account Created",
-      html: `
-    <h2>Welcome ${fullname}</h2>
-
-    <p>Your admin account has been created successfully.</p>
-
-    <p>
-      <strong>Username:</strong> ${userName}
-    </p>
-
-    <p>
-      <strong>Temporary Password:</strong> ${tempPassword}
-    </p>
-
-    <p>
-      <a 
-        href="${loginUrl}"
-        style="
-          background:#004B8D;
-          color:white;
-          padding:10px 18px;
-          text-decoration:none;
-          border-radius:6px;
-          display:inline-block;
-          margin-top:10px;
-        "
-      >
-        Login Now
-      </a>
-    </p>
-
-    <p>
-      Or open this URL:
-      <br />
-      ${loginUrl}
-    </p>
-
-    <p>Please login and change your password immediately.</p>
-  `,
-    });
+   // Check if the environment variable explicitly requests Brevo
+if (process.env.EMAIL_PROVIDER === "BREVO") {
+  // Send using Brevo
+  seneMaillog = await brevoSendMail({
+    to: email,
+    subject: "Your Admin Account Created",
+    html: emailHtml,
+  });
+} else {
+  // Default to AWS SES for everything else (including if the variable is empty)
+  seneMaillog = await awsSendMail({
+    to: email,
+    subject: "Your Admin Account Created",
+    html: emailHtml,
+  });
+}
 
 
     return res.status(201).json({
@@ -1270,11 +1245,21 @@ exports.forgotPassword = async (req, res) => {
 `;
 
     // Call your Brevo utility
-    await brevoSendMail({
-      to: admin.email,
-      subject: "Your Password Reset OTP",
-      html: emailHtml
-    });
+  if (process.env.EMAIL_PROVIDER === "BREVO") {
+  // Send using Brevo
+  await brevoSendMail({
+    to: admin.email,
+    subject: "Your Password Reset OTP",
+    html: emailHtml
+  });
+} else {
+  // Default to AWS SES
+  await awsSendMail({
+    to: admin.email,
+    subject: "Your Password Reset OTP",
+    html: emailHtml
+  });
+}
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully to your email"

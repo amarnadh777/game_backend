@@ -763,6 +763,10 @@ if (process.env.EMAIL_PROVIDER === "BREVO") {
   seneMaillog = await awsSendMail({
     to: email,
     subject: "Your Admin Account Created",
+
+
+
+    
     html: emailHtml,
   });
 }
